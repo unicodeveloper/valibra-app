@@ -29,14 +29,38 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Substantia — open MLR review",
+  title: "Valibra — open MLR review",
   description:
     "Open-source, Valyu-grounded MLR pre-check. Every claim checked against real biomedical evidence.",
 };
 
+/**
+ * Applies the saved theme before the first paint.
+ *
+ * This has to be a blocking inline script in <head>, not an effect: React runs
+ * after paint, so a reviewer who has pinned dark would get a full white flash on
+ * every navigation while the OS-default palette rendered first. Reading one
+ * localStorage key synchronously is cheap enough to be worth blocking on.
+ *
+ * Wrapped in try/catch because localStorage throws outright in some privacy
+ * modes, and a theme preference must never be able to take down the page.
+ */
+const THEME_BOOTSTRAP = `try{var t=localStorage.getItem("valibra-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable} ${mono.variable}`}>
+    /* suppressHydrationWarning is required, not incidental: the bootstrap script
+       below writes data-theme onto this element before React hydrates, so the
+       server markup and the live DOM legitimately disagree on that one
+       attribute. It suppresses the warning for <html> only, not descendants. */
+    <html
+      lang="en"
+      className={`${sans.variable} ${serif.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>{children}</body>
     </html>
   );

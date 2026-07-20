@@ -43,6 +43,9 @@ export function FindingCard({
       data-open={open}
       data-active={active}
       data-decided={decision !== null}
+      /* drives the severity rail and title weight; an unchecked finding must
+         not borrow the authority of one that was actually verified */
+      data-sev={unchecked ? "muted" : sev}
     >
       <button className="f-top" onClick={onToggle} aria-expanded={open} aria-controls={`fb-${finding.id}`}>
         <span className={`sev ${unchecked ? "muted" : sev}`} aria-hidden="true">

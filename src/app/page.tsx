@@ -5,12 +5,17 @@ import { ReviewView } from "./views/ReviewView";
 import { DossierView } from "./views/DossierView";
 import { LibraryView } from "./views/LibraryView";
 import { ResearchView } from "./views/ResearchView";
+import { HistoryView } from "./views/HistoryView";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { DR_LABELS, isDone, type DrKind, type DrTask } from "./dr";
+import type { ReviewResult } from "@/lib/schemas";
+import type { Decision } from "./review-model";
 
-type View = "review" | "library" | "dossier" | "research";
+type View = "review" | "history" | "library" | "dossier" | "research";
 
 const TABS: { id: View; label: string }[] = [
   { id: "review", label: "Review" },
+  { id: "history", label: "History" },
   { id: "library", label: "Library" },
   { id: "dossier", label: "Dossier" },
   { id: "research", label: "Research" },
@@ -39,6 +44,32 @@ export default function Page() {
     setToasts((prev) => [...prev, { ...t, id }]);
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 9000);
   }, []);
+
+  // A review reopened from history, handed to ReviewView to load. Wrapped with a
+  // nonce so reopening the same review twice still re-triggers the load.
+  const [reopened, setReopened] = useState<{
+    nonce: number;
+    result: ReviewResult;
+    decisions: Record<string, Decision>;
+  } | null>(null);
+
+  const openReview = useCallback(
+    async (id: string) => {
+      try {
+        const r = await fetch(`/api/reviews/${id}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Could not open that review.");
+        setReopened({ nonce: Date.now(), result: data.result, decisions: data.decisions ?? {} });
+        setView("review");
+      } catch (e) {
+        pushToast({
+          title: "Couldn't open that review",
+          sub: e instanceof Error ? e.message : undefined,
+        });
+      }
+    },
+    [pushToast],
+  );
 
   function generateDossierFor(drug: string) {
     setDossierDrug(drug);
@@ -150,11 +181,9 @@ export default function Page() {
       <header className="mast">
         <div className="mast-inner">
           <div className="brand">
-            <span className="mark" aria-hidden="true">
-              ◆
-            </span>
-            <h1>Substantia</h1>
-            <span className="by">Open MLR pre-check · grounded in Valyu</span>
+            <span className="mark" aria-hidden="true" />
+            <h1>Valibra</h1>
+            <span className="by">Open MLR pre-check · powered by Valyu</span>
           </div>
 
           <nav className="nav" role="tablist" aria-label="Workspace">
@@ -182,11 +211,20 @@ export default function Page() {
               </button>
             ))}
           </nav>
+
+          <ThemeToggle />
         </div>
       </header>
 
       <main id="panel" role="tabpanel" aria-labelledby={`tab-${view}`}>
-        {view === "review" && <ReviewView onGenerateDossier={generateDossierFor} onStartDr={startDr} />}
+        {view === "review" && (
+          <ReviewView
+            onGenerateDossier={generateDossierFor}
+            onStartDr={startDr}
+            reopened={reopened}
+          />
+        )}
+        {view === "history" && <HistoryView onOpen={openReview} />}
         {view === "library" && <LibraryView />}
         {view === "dossier" && (
           <DossierView

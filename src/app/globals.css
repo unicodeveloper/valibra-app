@@ -1,5 +1,5 @@
 /* =========================================================================
-   Substantia — design system
+   Valibra — design system
 
    The register is "reviewer's desk": an evidence document under annotation,
    not a SaaS dashboard. Three rules the rest of the file follows:
@@ -11,88 +11,112 @@
    3. Nothing is styled that isn't load-bearing.
    ========================================================================= */
 
+/* Theme.
+
+   Every token below is declared once, as light-dark(<light>, <dark>). Which arm
+   applies is decided entirely by the `color-scheme` in force on :root, so the
+   two palettes sit next to each other and cannot drift apart. The previous
+   arrangement kept the dark palette in a separate `prefers-color-scheme` block,
+   which meant 24 tokens existed twice; adding an in-app override would have made
+   that three copies to keep in sync.
+
+   `color-scheme: light dark` means "follow the OS". The [data-theme] rules below
+   pin it, which is the whole mechanism behind the theme control in the masthead:
+   set one attribute on <html>, and every token flips. */
 :root {
+  color-scheme: light dark;
+
   /* surfaces — warm paper, so the white asset sheet reads as a document on a desk */
-  --paper: #f5f4f0;
-  --surface: #ffffff;
-  --sunk: #eceeea;
-  --raised: #ffffff;
+  --paper: light-dark(#f5f4f0, #0e1211);
+  --surface: light-dark(#ffffff, #161b1a);
+  --sunk: light-dark(#eceeea, #1c2221);
+  --raised: light-dark(#ffffff, #1a201f);
 
   /* ink */
-  --ink: #16201d;
-  --ink-2: #55605c;
-  --ink-3: #8b948f;
+  --ink: light-dark(#16201d, #e7ebe8);
+  --ink-2: light-dark(#55605c, #a3aeaa);
+  --ink-3: light-dark(#8b948f, #737d79);
 
   /* structure */
-  --line: #e3e6e1;
-  --line-strong: #d0d5cf;
+  --line: light-dark(#e3e6e1, #262d2b);
+  --line-strong: light-dark(#d0d5cf, #333b39);
 
   /* brand */
-  --accent: #0d6b5e;
-  --accent-ink: #095248;
-  --accent-wash: #e4efec;
+  --accent: light-dark(#0d6b5e, #4fbfa8);
+  --accent-ink: light-dark(#095248, #7fd6c3);
+  --accent-wash: light-dark(#e4efec, #12302b);
 
   /* Foreground for anything sitting ON a filled accent/severity colour. These
      flip with the theme: the fills are dark in light mode and light in dark
      mode, so a hardcoded white would vanish on a dark-mode button. */
-  --on-accent: #ffffff;
-  --on-sev: #ffffff;
+  --on-accent: light-dark(#ffffff, #06201c);
+  --on-sev: light-dark(#ffffff, #10100e);
 
   /* severity */
-  --crit: #b0362a;
-  --crit-wash: #fbeae7;
-  --warn: #97620d;
-  --warn-wash: #fbf1e0;
-  --ok: #2b7550;
-  --ok-wash: #e6f2ea;
-  --muted-wash: #f0f1ee;
+  --crit: light-dark(#b0362a, #f28b7d);
+  --crit-wash: light-dark(#fbeae7, #351915);
+  --warn: light-dark(#97620d, #e0a944);
+  --warn-wash: light-dark(#fbf1e0, #322414);
+  --ok: light-dark(#2b7550, #6cc593);
+  --ok-wash: light-dark(#e6f2ea, #14301f);
+  --muted-wash: light-dark(#f0f1ee, #1e2423);
 
-  /* elevation — tight, low-spread. Paper doesn't float. */
-  --sh-1: 0 1px 2px rgba(22, 32, 29, 0.06);
-  --sh-2: 0 1px 2px rgba(22, 32, 29, 0.05), 0 8px 24px rgba(22, 32, 29, 0.06);
-  --sh-3: 0 2px 6px rgba(22, 32, 29, 0.08), 0 18px 44px rgba(22, 32, 29, 0.1);
+  /* elevation — tight, low-spread. Paper doesn't float.
+
+     light-dark() takes exactly two arguments, and a multi-layer shadow is itself
+     comma-separated, so the shadows can't be wrapped directly. The geometry is
+     identical in both themes anyway; only the shadow colour changes. So the
+     colours flip and the geometry stays literal. */
+  --sh-ink-1: light-dark(rgba(22, 32, 29, 0.06), rgba(0, 0, 0, 0.4));
+  --sh-ink-2a: light-dark(rgba(22, 32, 29, 0.05), rgba(0, 0, 0, 0.4));
+  --sh-ink-2b: light-dark(rgba(22, 32, 29, 0.06), rgba(0, 0, 0, 0.36));
+  --sh-ink-3a: light-dark(rgba(22, 32, 29, 0.08), rgba(0, 0, 0, 0.5));
+  --sh-ink-3b: light-dark(rgba(22, 32, 29, 0.1), rgba(0, 0, 0, 0.44));
+
+  --sh-1: 0 1px 2px var(--sh-ink-1);
+  --sh-2: 0 1px 2px var(--sh-ink-2a), 0 8px 24px var(--sh-ink-2b);
+  --sh-3: 0 2px 6px var(--sh-ink-3a), 0 18px 44px var(--sh-ink-3b);
 
   --radius: 10px;
   --radius-sm: 7px;
 
-  color-scheme: light;
+  /* Type scale.
+
+     The old file had everything between 9.5px and 15px, which meant nothing on
+     screen could claim to be more important than anything else. These are the
+     only sizes allowed. Each one has a job; if a new element doesn't fit one of
+     these, it's the element that's wrong.
+
+     micro   machine facts, mono only (ids, datasets, timestamps)
+     label   uppercase section labels
+     sm      secondary chrome
+     base    body chrome
+     doc     anything that is a *document* (asset text, dossier prose)
+     md      finding titles, panel headings
+     lg      section headings that need to outrank a finding
+     xl      the verdict. The loudest thing in the app, by design.
+     display first-run statement, dossier title */
+  --t-micro: 10.5px;
+  --t-label: 11px;
+  --t-sm: 12.5px;
+  --t-base: 14px;
+  --t-doc: 15.5px;
+  --t-md: 17px;
+  --t-lg: 22px;
+  --t-xl: 31px;
+  --t-display: 40px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0e1211;
-    --surface: #161b1a;
-    --sunk: #1c2221;
-    --raised: #1a201f;
 
-    --ink: #e7ebe8;
-    --ink-2: #a3aeaa;
-    --ink-3: #737d79;
-
-    --line: #262d2b;
-    --line-strong: #333b39;
-
-    --accent: #4fbfa8;
-    --accent-ink: #7fd6c3;
-    --accent-wash: #12302b;
-
-    --on-accent: #06201c;
-    --on-sev: #10100e;
-
-    --crit: #f28b7d;
-    --crit-wash: #351915;
-    --warn: #e0a944;
-    --warn-wash: #322414;
-    --ok: #6cc593;
-    --ok-wash: #14301f;
-    --muted-wash: #1e2423;
-
-    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --sh-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.36);
-    --sh-3: 0 2px 6px rgba(0, 0, 0, 0.5), 0 18px 44px rgba(0, 0, 0, 0.44);
-
-    color-scheme: dark;
-  }
+/* The theme control writes one of these onto <html>. Absent the attribute the
+   root keeps `color-scheme: light dark` and follows the OS, which stays the
+   default. Pinning color-scheme also fixes native UI (form controls, scrollbars)
+   to the chosen theme, which a class-based approach would leave mismatched. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 * {
@@ -120,7 +144,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 14px;
+  font-size: var(--t-base);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -158,19 +182,45 @@ body {
   min-height: 58px;
 }
 @media (max-width: 560px) {
-  /* Brand + four tabs can't share one row on a phone. Give the tabs their own
-     row and let them scroll rather than pushing the page sideways. */
+  /* Brand + five tabs + the theme control can't share one row on a phone. Two
+     rows via grid: brand and theme control up top, tabs underneath with their
+     own horizontal scroll rather than pushing the page sideways. Grid rather
+     than a column flex so the theme control can sit beside the brand instead of
+     claiming a third full-width row of masthead. */
   .mast-inner {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    /* minmax(0, 1fr), not 1fr: a `1fr` track has an auto (min-content) floor, and
+       .nav spans both columns, so the full width of five tabs was propped the
+       track open and pushed the document 8px wider than the viewport. */
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 0;
     padding: 0 14px;
   }
+  /* Rows are pinned explicitly. Auto-placement is order-dependent and never
+     backtracks: .nav spans the full width and sits before .theme-seg in the DOM,
+     so the control was pushed to a third row instead of sitting beside the
+     brand, making the masthead 119px tall on a phone. */
   .brand {
+    grid-column: 1;
+    grid-row: 1;
     min-height: 46px;
     align-items: center;
   }
+  .theme-seg {
+    grid-column: 2;
+    grid-row: 1;
+  }
   .nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    /* width:100% is load-bearing, not belt-and-braces. As a spanning grid item
+       whose flex content is wider than the row, the nav sized itself to its
+       content (384px) rather than to its 362px area, pushing the document 8px
+       past the viewport. Resolving the width against the area instead makes it
+       scroll internally, which is what the overflow-x below is there for. */
+    width: 100%;
+    min-width: 0;
     margin-left: 0;
     overflow-x: auto;
     scrollbar-width: none;
@@ -191,21 +241,30 @@ body {
   flex-shrink: 0;
 }
 .brand h1 {
-  font-size: 17px;
+  font-size: var(--t-md);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   margin: 0;
 }
+/* The mark is a filled square with a cut corner: a page with its corner turned.
+   It reads at 16px, which the old ◆ glyph did not, and it is drawn rather than
+   typed so it doesn't shift with the font stack. */
 .brand .mark {
-  color: var(--accent);
-  font-size: 15px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  align-self: center;
+  background: var(--accent);
+  clip-path: polygon(0 0, 68% 0, 100% 32%, 100% 100%, 0 100%);
+  border-radius: 2px;
 }
 .brand .by {
-  font-size: 11px;
+  font-size: var(--t-label);
   color: var(--ink-3);
   letter-spacing: 0.02em;
   white-space: nowrap;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
 }
 @media (max-width: 720px) {
   .brand .by {
@@ -213,11 +272,28 @@ body {
   }
 }
 
-/* tabs */
+/* Tabs.
+
+   Three things were wrong here. First, `align-self: stretch` on the buttons did
+   nothing useful: .nav is itself a flex item of a centred row, so it collapsed
+   to its content and the tabs measured 22px inside a 58px bar. The underline
+   never reached the mast's bottom edge the way the old comment claimed, and a
+   22px hit target is below the 24px minimum for a pointer target. .nav now
+   stretches, so the buttons genuinely fill the bar and the indicator sits on the
+   mast's own bottom border, where a tab indicator belongs.
+
+   Second, the only hover feedback was a colour shift on the label, which is
+   invisible on a 13px string. There is now a background wash on the whole tab.
+
+   Third, the global focus ring drew a rounded rectangle floating around the
+   label, which read as a stray bordered button and fought the underline it was
+   supposed to accompany. Tabs opt out of it and use an inset ring instead, so
+   the focus indicator has the same shape as the thing it is marking. */
 .nav {
   display: flex;
   gap: 2px;
   margin-left: auto;
+  align-self: stretch;
 }
 .nav button {
   position: relative;
@@ -227,22 +303,46 @@ body {
   font: inherit;
   font-weight: 600;
   font-size: 13px;
-  padding: 0 13px;
+  padding: 0 14px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  /* stretch so the active underline lands exactly on the mast's bottom edge */
-  align-self: stretch;
-  border-bottom: 2px solid transparent;
-  transition: color 0.14s ease, border-color 0.14s ease;
+  /* the indicator is a pseudo-element, not a border, so it can sit flush on the
+     mast's 1px bottom line rather than 1px above it */
+  transition: color 0.14s ease, background 0.14s ease;
+}
+.nav button::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: transparent;
+  transition: background 0.14s ease;
 }
 .nav button:hover {
   color: var(--ink);
+  background: color-mix(in srgb, var(--sunk) 70%, transparent);
+}
+.nav button:hover::after {
+  background: var(--line-strong);
 }
 .nav button[aria-selected="true"] {
   color: var(--accent);
-  border-bottom-color: var(--accent);
+}
+.nav button[aria-selected="true"]::after {
+  background: var(--accent);
+}
+/* Shape the focus indicator to the tab instead of floating a pill around the
+   label. Inset so it never overhangs the masthead's bottom edge. */
+.nav button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent-wash) 55%, transparent);
 }
 .nav .dot {
   width: 6px;
@@ -334,18 +434,30 @@ body {
 
 /* ---------------------------------------------------------------- atoms -- */
 
+/* Container rank.
+
+   Five things used to be the same object: white surface, 1px line, sh-1. The
+   eye had no way to tell the asset under review from a filter row. They are now
+   distinguished — though NOT by a single monotonic shadow ladder, because sheet
+   and verdict are the two primaries and never share a column:
+
+     sheet    the asset. sh-2 + serif body at document size.
+     verdict  the judgment. sh-2 + severity-toned top edge + the largest type.
+     finding  a single issue. Flat until opened; ranked by its own severity rail.
+     panel    plumbing. Flat, no shadow at all.
+
+   Nothing gets a shadow it hasn't earned. */
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--sh-1);
   padding: 18px;
 }
 
 label,
 .lbl {
   display: block;
-  font-size: 11px;
+  font-size: var(--t-label);
   font-weight: 650;
   letter-spacing: 0.07em;
   color: var(--ink-3);
@@ -354,6 +466,7 @@ label,
 }
 
 input[type="text"],
+input[type="search"],
 textarea,
 select {
   width: 100%;
@@ -366,12 +479,14 @@ select {
   background: var(--paper);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-input[type="text"]:hover,
+input[type="text"],
+input[type="search"]:hover,
 textarea:hover,
 select:hover {
   border-color: var(--ink-3);
 }
-input[type="text"]:focus,
+input[type="text"],
+input[type="search"]:focus,
 textarea:focus,
 select:focus {
   outline: none;
@@ -394,6 +509,65 @@ select {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* Visually hidden, still announced. Used for live result counts that a sighted
+   reviewer reads off the header but a screen reader would otherwise never hear,
+   because filtering changes the results without moving focus. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A filter field with its own clear button sitting inside the input. */
+.field-clear {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 260px;
+  max-width: 100%;
+}
+.field-clear input {
+  padding-right: 32px;
+}
+/* We draw our own clear control, so suppress the WebKit one. */
+.field-clear input[type="search"]::-webkit-search-cancel-button,
+.field-clear input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field-x {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: var(--t-sm);
+  line-height: 1;
+  padding: 4px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.field-x:hover:not(:disabled) {
+  background: var(--sunk);
+  color: var(--ink);
+  filter: none;
+}
+
+/* Holds its line whether or not it has text, so the results below don't shift
+   each time a request starts and finishes. */
+.filter-state {
+  font-size: var(--t-sm);
+  color: var(--ink-3);
+  min-width: 8ch;
+  font-variant-numeric: tabular-nums;
 }
 
 button {
@@ -461,7 +635,7 @@ button.sm {
 }
 kbd {
   font-family: var(--font-mono), monospace;
-  font-size: 10.5px;
+  font-size: var(--t-micro);
   border: 1px solid var(--line-strong);
   border-bottom-width: 2px;
   border-radius: 4px;
@@ -508,6 +682,147 @@ code {
   color: var(--ink);
 }
 
+/* Theme control. Reuses the segmented-control vocabulary the app already speaks
+   for markets, one notch smaller since it is masthead chrome rather than a
+   review input. It sits centred in the bar while the tabs stretch full height. */
+.theme-seg {
+  align-self: center;
+  flex-shrink: 0;
+}
+.theme-seg button {
+  font-size: var(--t-micro);
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+  min-height: 24px;
+}
+
+/* --------------------------------------------------------- view header -- */
+
+/* Shared by the views that are a list of things (history, library). Gives each
+   one a heading with real presence instead of an uppercase micro-label, so a
+   tab switch feels like arriving somewhere. */
+/* Grid, not flex: the sub-line has to occupy its own row, and under flex a
+   `max-width` on it beats `flex-basis: 100%` so it sat back up on the title
+   row. Grid column spans don't negotiate. */
+.view-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin: 14px 0 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.view-t {
+  grid-column: 1;
+  font-size: var(--t-lg);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+.view-ct {
+  grid-column: 2;
+  justify-self: start;
+  font-family: var(--font-mono), monospace;
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+}
+.view-act {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.view-sub,
+.view-head .err {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.view-sub {
+  font-size: var(--t-sm);
+  color: var(--ink-3);
+  max-width: 62ch;
+  line-height: 1.5;
+}
+@media (max-width: 620px) {
+  .view-head {
+    grid-template-columns: 1fr auto;
+  }
+  .view-ct {
+    grid-column: 1;
+  }
+  .view-act {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* ------------------------------------------------------------- intro -- */
+
+.intro {
+  margin: 18px 0 26px;
+}
+/* The measure lives on each child. Putting it on .intro made `ch` resolve
+   against the 14px body size, which choked the 40px headline into three lines. */
+.intro-t {
+  font-size: var(--t-display);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 14px;
+  max-width: 19ch;
+  text-wrap: balance;
+}
+.intro-b {
+  font-size: var(--t-doc);
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+  max-width: 58ch;
+}
+@media (max-width: 620px) {
+  .intro-t {
+    font-size: var(--t-lg);
+  }
+  .intro-b {
+    font-size: var(--t-base);
+  }
+}
+
+/* The passes. Two columns of hairline-separated rows rather than a card grid:
+   this is a reference list a reviewer reads once, not eight things competing
+   for a click. */
+.passes {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 720px) {
+  .passes {
+    grid-template-columns: 1fr;
+  }
+}
+.pass {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pass-n {
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--ink);
+}
+.pass-q {
+  font-size: var(--t-sm);
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+
 /* ------------------------------------------------------- review layout -- */
 
 .review-grid {
@@ -523,15 +838,27 @@ code {
   .doc-pane {
     position: static !important;
     max-height: none !important;
+    /* stacked single column: the sheet goes back to sizing to its content */
+    height: auto !important;
+  }
+  .doc-pane .sheet {
+    flex: 0 1 auto;
   }
 }
 
 .doc-pane {
   position: sticky;
   top: 82px;
-  max-height: calc(100vh - 106px);
+  /* was max-height, which let the pane shrink-wrap its text and leave most of a
+     tall viewport as empty paper beside a long findings list. The asset is the
+     subject of the screen; it holds its column. */
+  height: calc(100vh - 106px);
   display: flex;
   flex-direction: column;
+}
+.doc-pane .sheet {
+  flex: 1;
+  min-height: 0;
 }
 
 /* the asset, as a sheet of paper */
@@ -621,7 +948,10 @@ code {
   margin-left: 2px;
   padding: 1px 3px;
   border-radius: 3px;
-  color: var(--on-sev);
+  /* Was a `prefers-color-scheme` override, which would have ignored a manual
+     theme pin and left this glyph light-on-light for anyone forcing dark on a
+     light OS. Folded into the same light-dark() mechanism as every other token. */
+  color: light-dark(var(--on-sev), #0e1211);
 }
 .mk.critical .n {
   background: var(--crit);
@@ -632,22 +962,39 @@ code {
 .mk.info .n {
   background: var(--ok);
 }
-@media (prefers-color-scheme: dark) {
-  .mk .n {
-    color: #0e1211;
-  }
-}
 
 /* ------------------------------------------------------------ verdict -- */
 
+/* The verdict is the output of the entire pipeline. It used to be a 16px h2 in
+   a box that weighed the same as a filter row. It is now the loudest object on
+   the screen, and its top edge carries the severity it is reporting. */
 .verdict {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--sh-1);
-  padding: 16px 18px;
-  margin-bottom: 14px;
+  box-shadow: var(--sh-2);
+  padding: 22px 22px 18px;
+  margin-bottom: 16px;
+  overflow: hidden;
 }
+.verdict::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--ink-3);
+}
+.verdict[data-sev="critical"]::before {
+  background: var(--crit);
+}
+.verdict[data-sev="warning"]::before {
+  background: var(--warn);
+}
+.verdict[data-sev="info"]::before {
+  background: var(--ok);
+}
+
 .verdict-top {
   display: flex;
   align-items: center;
@@ -655,16 +1002,30 @@ code {
   flex-wrap: wrap;
 }
 .verdict h2 {
-  font-size: 16px;
+  font-size: var(--t-xl);
+  font-weight: 600;
   margin: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
+}
+/* the glyph scales with the headline it sits beside */
+.verdict h2 .sev {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: var(--t-sm);
+}
+@media (max-width: 560px) {
+  .verdict h2 {
+    font-size: var(--t-lg);
+  }
 }
 .verdict .drug {
   font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  font-size: var(--t-label);
   color: var(--ink-2);
   background: var(--sunk);
   border: 1px solid var(--line);
@@ -759,7 +1120,7 @@ code {
 }
 .prog-txt {
   font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  font-size: var(--t-label);
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -787,7 +1148,7 @@ code {
 }
 .trust .ds {
   font-family: var(--font-mono), monospace;
-  font-size: 10.5px;
+  font-size: var(--t-micro);
   background: color-mix(in srgb, var(--surface) 60%, transparent);
   border-radius: 4px;
   padding: 1px 6px;
@@ -803,24 +1164,53 @@ code {
   margin: 0 0 10px;
 }
 .f-head .ttl {
-  font-size: 11px;
+  font-size: var(--t-label);
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
 
+/* A findings list is a triage queue, so it must be scannable by weight alone.
+   Every card used to be identical, which meant a critical substantiation gap
+   and a resolved note looked the same at arm's length. Severity now sets a left
+   rail and the title weight; decided findings recede. Colour still isn't doing
+   this alone — the glyph, the word and the claim number all still carry. */
 .finding {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius);
-  box-shadow: var(--sh-1);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   scroll-margin-top: 90px;
-  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+  transition: box-shadow 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+.finding[data-sev="critical"] {
+  border-left-color: var(--crit);
+  box-shadow: var(--sh-1);
+}
+.finding[data-sev="critical"] .f-title {
+  font-size: var(--t-md);
+  letter-spacing: -0.015em;
+}
+.finding[data-sev="warning"] {
+  border-left-color: var(--warn);
+}
+.finding[data-sev="info"] {
+  border-left-color: var(--ok);
+}
+.finding[data-sev="muted"] {
+  border-left-color: var(--line-strong);
 }
 .finding:hover {
   border-color: var(--line-strong);
+}
+.finding[data-sev="critical"]:hover {
+  border-left-color: var(--crit);
+}
+.finding[data-open="true"] {
+  box-shadow: var(--sh-2);
 }
 .finding[data-active="true"] {
   border-color: var(--accent);
@@ -885,10 +1275,11 @@ code {
   min-width: 0;
 }
 .f-title {
-  font-size: 13.5px;
+  font-size: var(--t-base);
   font-weight: 650;
   margin: 0;
   letter-spacing: -0.005em;
+  line-height: 1.35;
 }
 .f-meta {
   display: flex;
@@ -1089,7 +1480,7 @@ code {
   color: var(--accent);
   text-decoration: none;
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: var(--t-sm);
 }
 .ev a:hover {
   text-decoration: underline;
@@ -1131,17 +1522,17 @@ code {
   background: color-mix(in srgb, var(--surface) 45%, transparent);
 }
 .empty .ico {
-  font-size: 22px;
+  font-size: var(--t-lg);
   opacity: 0.4;
   margin-bottom: 10px;
 }
 .empty h3 {
-  font-size: 14px;
+  font-size: var(--t-base);
   margin: 0 0 5px;
   font-weight: 650;
 }
 .empty p {
-  font-size: 12.5px;
+  font-size: var(--t-sm);
   color: var(--ink-3);
   margin: 0 auto;
   max-width: 46ch;
@@ -1197,7 +1588,7 @@ code {
   align-items: center;
   gap: 10px;
   padding: 7px 2px;
-  font-size: 12.5px;
+  font-size: var(--t-sm);
   color: var(--ink-3);
   transition: color 0.2s ease;
 }
@@ -1235,7 +1626,7 @@ code {
 }
 .stage .sd {
   font-family: var(--font-mono), monospace;
-  font-size: 10.5px;
+  font-size: var(--t-micro);
   color: var(--ink-3);
   margin-left: auto;
 }
@@ -1261,36 +1652,52 @@ code {
   border-radius: var(--radius);
   box-shadow: var(--sh-2);
   padding: 34px 38px 38px;
-  max-width: 780px;
+  /* Sized so the serif body lands at ~74ch without needing its own max-width.
+     At 780px the text measured 68ch but the section rules ran the full 702px,
+     leaving a 145px gutter to the right of every paragraph that read as a bug
+     rather than as a margin. The column and the measure now agree. */
+  max-width: 680px;
 }
 @media (max-width: 620px) {
   .report {
     padding: 22px;
   }
 }
+/* The dossier is the artefact a reviewer hands to someone else, so it is
+   typeset as a document rather than as app chrome: a masthead rule under the
+   title, serif body at a real reading measure, and section labels that sit in
+   the margin of the text rather than shouting above it. */
 .report .r-title {
   font-family: var(--font-serif), Georgia, serif;
-  font-size: 27px;
+  font-size: var(--t-display);
   font-weight: 600;
-  margin: 0 0 5px;
-  letter-spacing: -0.015em;
+  margin: 0 0 8px;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   text-transform: capitalize;
 }
 .report .r-sub {
   font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  font-size: var(--t-micro);
   color: var(--ink-3);
   margin: 0 0 6px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+}
+@media (max-width: 620px) {
+  .report .r-title {
+    font-size: var(--t-lg);
+  }
 }
 .dsec {
   border-top: 1px solid var(--line);
-  padding: 18px 0 4px;
+  padding: 22px 0 4px;
 }
 .dsec:first-of-type {
   border-top: 0;
 }
 .dsec h3 {
-  font-size: 10.5px;
+  font-size: var(--t-micro);
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--accent);
@@ -1299,9 +1706,9 @@ code {
 }
 .dsec .body {
   font-family: var(--font-serif), Georgia, serif;
-  font-size: 15px;
+  font-size: var(--t-doc);
   color: var(--ink);
-  line-height: 1.68;
+  line-height: 1.72;
 }
 .dsec .body p {
   margin: 0 0 10px;
@@ -1377,7 +1784,7 @@ a.src-chip:hover {
 /* audit */
 .audit {
   font-family: var(--font-mono), monospace;
-  font-size: 11px;
+  font-size: var(--t-label);
   color: var(--ink-2);
   max-height: 260px;
   overflow-y: auto;
@@ -1414,7 +1821,7 @@ a.src-chip:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--t-sm);
 }
 th {
   text-align: left;
@@ -1453,7 +1860,7 @@ td.claim-c {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: var(--t-label);
   font-weight: 650;
 }
 .vd.supported {
@@ -1484,7 +1891,7 @@ td.claim-c {
   gap: 12px;
 }
 .dr-title {
-  font-size: 14px;
+  font-size: var(--t-base);
   font-weight: 650;
   margin: 0;
   letter-spacing: -0.005em;

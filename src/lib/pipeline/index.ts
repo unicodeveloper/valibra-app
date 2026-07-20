@@ -29,7 +29,13 @@ function normalizeClaim(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").replace(/[.\s]+$/, "").trim();
 }
 
-type LibMatch = { verdict: string; savedAt: string; similarity: number; matchedText: string };
+type LibMatch = {
+  verdict: string;
+  savedAt: string;
+  similarity: number;
+  matchedText: string;
+  status: string;
+};
 const SEMANTIC_THRESHOLD = 0.85; // cosine cutoff for text-embedding-3-small paraphrase matches
 
 function savedAtStr(v: unknown): string {
@@ -41,22 +47,37 @@ function savedAtStr(v: unknown): string {
  * F16 v2 — match review claims to the library: exact normalized text first, then
  * semantic (cosine ≥ threshold) so paraphrased prior claims still reuse. Semantic
  * matching is best-effort; on embed failure it silently falls back to exact-only.
+ *
+ * A claim a reviewer rejected is never reused — dropping those here keeps a
+ * human "no" authoritative over the pipeline's earlier "supported".
  */
 async function buildLibraryMatcher(
   claims: Claim[],
-  entries: LibraryEntry[],
+  allEntries: LibraryEntry[],
 ): Promise<Map<string, LibMatch>> {
   const out = new Map<string, LibMatch>();
+  const entries = allEntries.filter((e) => e.status !== "rejected");
   if (entries.length === 0) return out;
 
+  // Confirmed entries win a text collision: same claim, human-reviewed version.
   const byNorm = new Map<string, LibraryEntry>();
-  for (const e of entries) byNorm.set(normalizeClaim(e.claim_text), e);
+  for (const e of entries) {
+    const k = normalizeClaim(e.claim_text);
+    const prev = byNorm.get(k);
+    if (!prev || (prev.status !== "confirmed" && e.status === "confirmed")) byNorm.set(k, e);
+  }
 
   const unmatched: Claim[] = [];
   for (const c of claims) {
     const e = byNorm.get(normalizeClaim(c.text));
     if (e) {
-      out.set(c.id, { verdict: e.verdict, savedAt: savedAtStr(e.created_at), similarity: 1, matchedText: e.claim_text });
+      out.set(c.id, {
+        verdict: e.verdict,
+        savedAt: savedAtStr(e.created_at),
+        similarity: 1,
+        matchedText: e.claim_text,
+        status: e.status,
+      });
     } else {
       unmatched.push(c);
     }
@@ -83,6 +104,7 @@ async function buildLibraryMatcher(
           savedAt: savedAtStr(best.created_at),
           similarity: bestSim,
           matchedText: best.claim_text,
+          status: best.status,
         });
       }
     });
@@ -121,6 +143,10 @@ export async function runReview(
   };
 
   log("ingest", `Asset "${assetName}" received (${assetText.length} chars).`);
+
+  // Clear the retrieval circuit breaker so a previous run's credit failure can't
+  // short-circuit this one.
+  valyu.beginRetrievalRun();
 
   // F1 — extract claims + drug
   const { drugName, claims } = await extractClaims(assetText);
@@ -303,6 +329,14 @@ export async function runReview(
     libraryMatches,
   });
   log("assemble", `${findings.length} finding(s) surfaced for review.`);
+
+  // A credit failure is reported once, as its own state — not mixed into the
+  // list of thin-evidence problems, where it would read as a retrieval quirk.
+  const retrievalHalt = valyu.retrievalHalt();
+  if (retrievalHalt) {
+    for (const e of [...retrievalErrors]) if (valyu.isCreditError(e)) retrievalErrors.delete(e);
+    log("retrieval", `Halted — ${retrievalHalt} Remaining searches were skipped.`);
+  }
   if (retrievalErrors.size) {
     log("retrieval", `Retrieval problems: ${[...retrievalErrors].join(" | ")}`);
   }
@@ -310,6 +344,7 @@ export async function runReview(
   return {
     reviewId,
     assetName,
+    assetText,
     drugName,
     claims,
     substantiation,
@@ -326,6 +361,7 @@ export async function runReview(
     deepResearchRequired,
     findings,
     retrievalErrors: [...retrievalErrors],
+    retrievalHalt,
     audit,
   };
 }

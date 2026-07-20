@@ -116,19 +116,64 @@ export interface Retrieval {
   error: string | null;
 }
 
+/**
+ * Retrieval circuit breaker.
+ *
+ * A review fans out to 10–20 searches, most of them concurrent. If the account
+ * runs out of credits partway through, every remaining search spends a
+ * round-trip to fail identically, and the reviewer is left reading a wall of
+ * `no_evidence` verdicts that look like abstentions rather than a billing
+ * problem. Once we see a credit failure we latch it and short-circuit the rest
+ * of the run, so the orchestrator can report "out of credits" as one distinct,
+ * actionable state.
+ *
+ * The latch is cleared at the start of every run rather than living for the
+ * process lifetime — a topped-up account must never stay stuck on a stale
+ * latch. Concurrent runs share it, which is correct: credits are per-account,
+ * so a failure in one run really does apply to the others.
+ */
+const CREDIT_ERROR_RE =
+  /insufficient credit|out of credits|top ?up|payment required|quota exceeded|billing/i;
+
+let haltReason: string | null = null;
+
+/** True when an error message means "the account can't pay for this search". */
+export function isCreditError(message: string): boolean {
+  return CREDIT_ERROR_RE.test(message);
+}
+
+/** Clear the circuit breaker. Call once at the start of each review run. */
+export function beginRetrievalRun(): void {
+  haltReason = null;
+}
+
+/** The credit failure that halted retrieval this run, if any. */
+export function retrievalHalt(): string | null {
+  return haltReason;
+}
+
+/**
+ * Map a failed Valyu response to a Retrieval, latching the breaker when the
+ * failure is a credit failure (i.e. every subsequent search would fail too).
+ */
+function failed(res: any): Retrieval {
+  const error = res?.error || "Valyu search failed.";
+  if (isCreditError(error)) haltReason = error;
+  return { evidence: [], error };
+}
+
 async function search(
   query: string,
   sources: string[],
   maxResults = 5,
   snippetChars = 1200,
 ): Promise<Retrieval> {
+  if (haltReason) return { evidence: [], error: haltReason };
   const res: any = await client().search(query, {
     includedSources: sources,
     maxNumResults: maxResults,
   });
-  if (res?.success === false) {
-    return { evidence: [], error: res?.error || "Valyu search failed." };
-  }
+  if (res?.success === false) return failed(res);
   const results: RawResult[] = res?.results ?? [];
   return { evidence: results.map((r) => toEvidence(r, snippetChars)), error: null };
 }
@@ -252,6 +297,7 @@ export async function getMarketEvidence(query: string): Promise<Retrieval> {
  * (no includedSources) rather than a named dataset.
  */
 export async function searchRegulatory(query: string): Promise<Retrieval> {
+  if (haltReason) return { evidence: [], error: haltReason };
   const res: any = await client().search(query, {
     searchType: "web",
     maxNumResults: 6,
@@ -261,7 +307,7 @@ export async function searchRegulatory(query: string): Promise<Retrieval> {
       "advertising guidance documents. Exclude drug product labels and prescribing information.",
     sourceBiases: { "fda.gov": 3, "accessdata.fda.gov": 3 },
   });
-  if (res?.success === false) return { evidence: [], error: res?.error || "Valyu search failed." };
+  if (res?.success === false) return failed(res);
   const results: RawResult[] = res?.results ?? [];
   return { evidence: results.map((r) => toEvidence(r)), error: null };
 }

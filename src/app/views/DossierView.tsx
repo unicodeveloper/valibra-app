@@ -63,6 +63,16 @@ export function DossierView({
 
   return (
     <div className="wrap narrow">
+      {/* Same view header as history and library, so switching tabs feels like
+          arriving somewhere rather than landing on another boxed toolbar. */}
+      <header className="view-head">
+        <h2 className="view-t">Evidence dossier</h2>
+        <p className="view-sub">
+          Everything the evidence says about one drug, compiled into a document you can hand
+          to someone: indication, efficacy, safety, interactions, and the gaps.
+        </p>
+      </header>
+
       <div className="panel">
         <label htmlFor="drug">Drug / molecule</label>
         <div className="row">

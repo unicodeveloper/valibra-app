@@ -1,4 +1,4 @@
-# Substantia - Open MLR Review
+# Valibra - Open MLR Review
 
 An open-source, self-hostable **MLR (Medical-Legal-Regulatory) pre-check** for pharma promotional
 content. It verifies every claim against real, licensed primary sources, not a private library and shows its
@@ -81,6 +81,82 @@ work elsewhere in the app.
 | HCP verification & transparency | Verify an NPI, taxonomy and practice location for KOL vetting / Sunshine Act review | NPI Registry |
 | Indication-language normalization | Maps promotional phrasing to coded indications and flags indication creep | WHO ICD |
 
+## How this compares
+
+The MLR category competes on workflow — routing, approvals, version control. Valibra doesn't
+fight there. It competes on **evidence**: every check below runs against a licensed primary source,
+not a private claims library you have to build and keep current.
+
+**●** core capability · **◐** partial or implied · **○** not advertised
+
+| Capability | Valibra | Veeva | Revisto | ERMA | Papercurve |
+|---|:--:|:--:|:--:|:--:|:--:|
+| **Substantiation** |
+| Claim extraction & typing | ● | ● | ● | ● | ◐ |
+| Multi-source substantiation | ● | ◐ | ◐ | ◐ | ◐ |
+| Reference verification against a primary source † | ● | ◐ | ◐ | ◐ | ◐ |
+| **Citation currency & quality gate** | ● | ○ | ○ | ○ | ○ |
+| **Label & safety** |
+| Fair-balance / ISI vs live label | ● | ◐ | ● | ◐ | ◐ |
+| On-/off-label detector | ● | ◐ | ◐ | ◐ | ○ |
+| **Adverse-event cross-check (FAERS)** | ● | ○ | ○ | ○ | ○ |
+| Boxed-warning & contraindication omission | ● | ○ | ◐ | ◐ | ○ |
+| **Drug-interaction checker** | ● | ○ | ○ | ○ | ○ |
+| **Regulatory & competitive** |
+| Enforcement-precedent grounding | ● | ◐ | ◐ | ● | ○ |
+| Multi-market review (US/UK/EU) | ● | ● | ◐ | ◐ | ○ |
+| Comparative / superiority checker | ● | ◐ | ◐ | ◐ | ○ |
+| **IP / first-in-class checker** | ● | ○ | ○ | ○ | ○ |
+| **Market-claim checker** | ● | ○ | ○ | ○ | ○ |
+| **Specialist claim lanes** |
+| **Burden-of-disease / epidemiology** | ● | ○ | ○ | ○ | ○ |
+| **Companion-Dx / biomarker** | ● | ○ | ○ | ○ | ○ |
+| **Mechanism-of-action depth** | ● | ○ | ○ | ○ | ○ |
+| **Workspace** |
+| Reviewer workspace | ● | ● | ● | ● | ● |
+| Passage-anchored annotation & export | ● | ● | ● | ● | ● |
+| Claims library | ● | ● | ● | ○ | ◐ |
+| **Licensed-evidence provenance** | ● | ○ | ○ | ○ | ○ |
+| **DeepResearch lane** |
+| **Evidence dossier** | ● | ○ | ○ | ○ | ○ |
+| **Surveillance-claim checker** | ● | ○ | ○ | ○ | ○ |
+| Medical-device MLR mode | ● | ◐ | ○ | ○ | ○ |
+| **HCP verification (NPI)** | ● | ○ | ○ | ○ | ○ |
+| **Indication-language normalization (ICD)** | ● | ○ | ○ | ○ | ○ |
+
+**† The flagship difference is the one row where everyone scores.** All four incumbents link claims
+to references — Veeva auto-suggests them and flags missing links, Revisto validates statements
+against approved claims and references, Papercurve's Paige confidence-rates suggested references,
+ERMA maps substantiation across sentences. Every one of those checks a claim against **your
+approved library**. None of them publicly claims to check whether the *underlying source document
+actually says what the claim says*. That gap — matching and linking vs. entailment against the
+primary literature — is the whole reason this project exists, and an independent 2026 survey of the
+category reaches the same conclusion.
+
+**13 of the 26 checks have no advertised equivalent anywhere in the category** (bold rows). They
+fall into three groups:
+
+- **Safety data nobody wires in.** Post-market adverse events (FAERS) and label interactions are
+  public, structured, and directly contradict "well-tolerated" copy. No competitor advertises them.
+- **Claim types outside the label.** Patent, market-share, epidemiology, biomarker, mechanism and
+  surveillance claims all ship in real promotional material and all draw scrutiny — but sit outside
+  what a label-and-library tool can check.
+- **Evidence you can audit.** A citation-quality gate, named datasets and source counts per review,
+  because every citation points at a document the retrieval layer actually returned.
+
+Where the category is strong — configurable workflows, e-signatures, 21 CFR Part 11 records,
+enterprise CMS integration — the incumbents are ahead, and this is not a replacement for them. It is
+the evidence layer that runs before, or alongside, the system of record.
+
+> **On this table.** Marks reflect what each vendor **publicly advertises** on their own site and in
+> trade coverage, last verified July 2026 against
+> [Veeva AI for PromoMats](https://www.veeva.com/products/veeva-ai-for-promomats/),
+> [Revisto](https://www.revisto.com/product), [ERMA](https://www.ermasystems.com/mlr-software) and
+> [Papercurve](https://www.papercurve.com/product-claims).
+> "Not advertised" is not proof a capability is absent — these are closed products and any of them
+> may ship something unannounced, under a different name, or on a roadmap. Veeva in particular ships
+> AI agents fast; this table will go stale. Corrections via PR are welcome.
+
 ## Stack
 
 TypeScript · Next.js (App Router) · [`valyu-js`](https://www.npmjs.com/package/valyu-js) ·
@@ -103,7 +179,7 @@ hosted instance — self-host for real work.)
 
 ```bash
 docker compose up -d         # Postgres on :5432
-export DATABASE_URL=postgres://mlr:mlr@localhost:5432/mlr
+export DATABASE_URL=postgres://valibra:valibra@localhost:5432/valibra
 npm run db:init              # create tables
 ```
 
@@ -122,6 +198,10 @@ src/lib/db/               optional Postgres persistence + claims library
 src/app/api/              review · dossier · deepresearch · library
 src/app/views/            Review · Library · Dossier · Research tabs
 ```
+
+## Author
+
+Built by **Prosper Otemuyiwa** ([@unicodeveloper](https://github.com/unicodeveloper)).
 
 ## License
 

@@ -17,14 +17,17 @@ export function ResearchView({
 
   return (
     <div className="wrap narrow">
-      <div className="panel">
-        <label htmlFor="dr-kind">Deep research</label>
-        <p className="hint" style={{ margin: "0 0 12px", maxWidth: "72ch" }}>
-          For checks whose authoritative source is a DeepResearch-only Valyu dataset — FDA Device
-          Events (MAUDE), the NPI Registry, WHO ICD, CDC surveillance, and BindingDB. These run async
-          and can take a few minutes; you can keep working and you&apos;ll be notified when a report
-          lands.
+      <header className="view-head">
+        <h2 className="view-t">Deep research</h2>
+        <p className="view-sub">
+          For checks whose authoritative source is a DeepResearch-only Valyu dataset: FDA Device
+          Events (MAUDE), the NPI Registry, WHO ICD, CDC surveillance and BindingDB. These run
+          async over a few minutes; keep working and you&apos;ll be notified when a report lands.
         </p>
+      </header>
+
+      <div className="panel">
+        <label htmlFor="dr-kind">New task</label>
 
         <div className="row">
           <select

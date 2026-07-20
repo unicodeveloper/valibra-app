@@ -266,7 +266,14 @@ export interface Finding {
    * Set when this claim was already substantiated in the claims library (F16 reuse).
    * `similarity` is 1 for an exact-text match, or the cosine score for a semantic (v2) match.
    */
-  libraryMatch?: { verdict: string; savedAt: string; similarity: number; matchedText?: string } | null;
+  libraryMatch?: {
+    verdict: string;
+    savedAt: string;
+    similarity: number;
+    matchedText?: string;
+    /** "confirmed" = a reviewer accepted it previously; "provisional" = pipeline only. */
+    status?: string;
+  } | null;
 }
 
 export interface AuditEntry {
@@ -278,6 +285,8 @@ export interface AuditEntry {
 export interface ReviewResult {
   reviewId: string;
   assetName: string;
+  /** The reviewed text itself — kept so a stored review can be reopened and re-anchored. */
+  assetText: string;
   drugName: string;
   claims: Claim[];
   substantiation: Record<
@@ -286,7 +295,6 @@ export interface ReviewResult {
   >;
   fairBalance: FairBalance | null;
   offLabel: OffLabel | null;
-  // Phase 1
   adverseEvents: AdverseEventCheck | null;
   safetyOmission: SafetyOmission | null;
   interactions: InteractionCheck | null;
@@ -299,7 +307,14 @@ export interface ReviewResult {
   provenance: Provenance; // F26
   deepResearchRequired: DrRequired[]; // DR-lane checks to kick off (e.g. F25 surveillance)
   findings: Finding[];
-  /** Non-fatal retrieval problems (out of credits, unauthorized datasets, rate limits). */
+  /** Non-fatal retrieval problems (unauthorized datasets, rate limits, no matching label). */
   retrievalErrors: string[];
+  /**
+   * Set when retrieval was halted mid-run by a credit failure, in which case the
+   * remaining searches were skipped rather than retried. Distinct from
+   * `retrievalErrors`: this is a billing state the reviewer can act on, not
+   * evidence that happened to be thin.
+   */
+  retrievalHalt: string | null;
   audit: AuditEntry[];
 }

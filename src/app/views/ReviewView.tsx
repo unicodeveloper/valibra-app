@@ -23,9 +23,12 @@ type Market = (typeof MARKETS)[number];
 export function ReviewView({
   onGenerateDossier,
   onStartDr,
+  reopened,
 }: {
   onGenerateDossier: (drug: string) => void;
   onStartDr: (kind: DrKind, input: string) => void;
+  /** A past review pulled from history, with the decisions already made on it. */
+  reopened?: { result: ReviewResult; decisions: Record<string, Decision> } | null;
 }) {
   const [assetName, setAssetName] = useState("Sample asset");
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
@@ -44,6 +47,34 @@ export function ReviewView({
   const [sevFilter, setSevFilter] = useState<Set<Severity>>(new Set());
   const [undecidedOnly, setUndecidedOnly] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Decisions are written server-side per click. If that write fails (DB down,
+  // offline) the local state still stands — losing the triage a reviewer just
+  // did would be far worse than a stale row — but we say so rather than let
+  // them believe it was saved.
+  const [unsaved, setUnsaved] = useState(0);
+  const [persistOff, setPersistOff] = useState(false);
+
+  /** Load a review pulled from history, decisions and all. */
+  useEffect(() => {
+    if (!reopened) return;
+    abortRef.current?.abort();
+    setRunning(false);
+    setError(null);
+    setUnsaved(0);
+    setResult(reopened.result);
+    setAssetName(reopened.result.assetName);
+    setAssetText(reopened.result.assetText ?? "");
+    setDecisions(reopened.decisions);
+    setActiveClaimId(null);
+    setOpenIds(
+      new Set(
+        reopened.result.findings
+          .filter((f) => f.severity === "critical" && !reopened.decisions[f.id])
+          .map((f) => f.id),
+      ),
+    );
+  }, [reopened]);
 
   function toggleMarket(m: Market) {
     setMarkets((prev) => {
@@ -67,6 +98,7 @@ export function ReviewView({
     setDecisions({});
     setOpenIds(new Set());
     setActiveClaimId(null);
+    setUnsaved(0);
 
     try {
       const res = await fetch("/api/review", {
@@ -165,9 +197,32 @@ export function ReviewView({
     el?.focus();
   }, []);
 
-  const decide = useCallback((id: string, d: Decision) => {
-    setDecisions((prev) => ({ ...prev, [id]: d }));
-  }, []);
+  /**
+   * Apply a decision locally, then record it server-side. Optimistic on purpose:
+   * triage is a keyboard-speed activity and must never wait on a round trip.
+   */
+  const decide = useCallback(
+    (id: string, d: Decision) => {
+      setDecisions((prev) => ({ ...prev, [id]: d }));
+
+      const reviewId = result?.reviewId;
+      if (!reviewId) return;
+      void fetch(`/api/reviews/${reviewId}/decisions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Un-deciding is recorded as "cleared", not as an absence — the audit
+        // trail should show the reviewer changed their mind.
+        body: JSON.stringify({ findingId: id, decision: d ?? "cleared" }),
+      })
+        .then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.error || `Save failed (${r.status}).`);
+          if (data.persisted === false && data.reason === "persistence_disabled") setPersistOff(true);
+        })
+        .catch(() => setUnsaved((n) => n + 1));
+    },
+    [result],
+  );
 
   // A / R decide whichever finding the pointer or keyboard is inside.
   useEffect(() => {
@@ -186,14 +241,14 @@ export function ReviewView({
       if (!card) return;
       const id = card.id.replace(/^finding-/, "");
       e.preventDefault();
-      setDecisions((prev) => ({
-        ...prev,
-        [id]: prev[id] === (k === "a" ? "accepted" : "rejected") ? null : k === "a" ? "accepted" : "rejected",
-      }));
+      // Route through decide() so a keyboard decision persists exactly like a
+      // clicked one.
+      const want: Decision = k === "a" ? "accepted" : "rejected";
+      decide(id, decisions[id] === want ? null : want);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [result]);
+  }, [result, decide, decisions]);
 
   function exportReport() {
     if (!result) return;
@@ -304,7 +359,30 @@ export function ReviewView({
 
           {result && (
             <>
-              {unchecked && (
+              {result.retrievalHalt && (
+                <div className="banner crit" role="alert">
+                  <span aria-hidden="true">▲</span>
+                  <div>
+                    <p className="b-t">Out of Valyu credits — this review is incomplete</p>
+                    <p style={{ margin: "0 0 4px", color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Evidence retrieval stopped partway through, so the remaining searches were
+                      skipped rather than run. Any <strong>&ldquo;no evidence&rdquo;</strong> verdict
+                      below may simply be a claim that was never checked.{" "}
+                      <strong>Top up the account and re-run before signing off.</strong>
+                    </p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Valyu reported: {result.retrievalHalt}
+                    </p>
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="sm" onClick={runReview}>
+                        Re-run review
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {unchecked && !result.retrievalHalt && (
                 <div className="banner crit" role="alert">
                   <span aria-hidden="true">▲</span>
                   <div>
@@ -336,6 +414,32 @@ export function ReviewView({
                         <li key={i}>{e}</li>
                       ))}
                     </ul>
+                  </div>
+                </div>
+              )}
+
+              {(persistOff || unsaved > 0) && (
+                <div className="banner warn" role="status">
+                  <span aria-hidden="true">●</span>
+                  <div>
+                    <p className="b-t">
+                      {persistOff
+                        ? "Persistence is off — decisions live in this tab only"
+                        : `${unsaved} decision${unsaved === 1 ? "" : "s"} couldn't be saved`}
+                    </p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      {persistOff ? (
+                        <>
+                          Set <code>DATABASE_URL</code> to keep the decision trail and reopen this
+                          review later. Export the report to keep a record in the meantime.
+                        </>
+                      ) : (
+                        <>
+                          Your decisions are intact here, but the server didn&apos;t record them.
+                          Export the report before closing this tab.
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
               )}
@@ -507,6 +611,22 @@ function Compose({
 }) {
   return (
     <>
+      {/* First run used to be a bare textarea floating in half a viewport of
+          empty paper, which told a reviewer nothing about what the tool does or
+          what it checks. The statement and the pass list are the product's only
+          chance to explain itself before the first run. */}
+      <section className="intro">
+        <h2 className="intro-t">
+          Paste an asset. Every claim in it gets checked against the evidence.
+        </h2>
+        <p className="intro-b">
+          Valibra pulls each promotional claim out of your copy and puts it through the
+          passes below, against real biomedical literature, approved labelling and trial
+          records. Each claim comes back with a finding and its sources, for you to accept or
+          reject.
+        </p>
+      </section>
+
       <div className="panel">
         <label htmlFor="asset-name">Asset name</label>
         <input
@@ -565,10 +685,29 @@ function Compose({
         )}
       </div>
 
-      <p className="hint" style={{ marginTop: 12, textAlign: "center" }}>
-        The sample is fictional by design. Don&apos;t paste confidential material into a hosted
-        instance — self-host for real work.
-      </p>
+      {/* The passes are the actual pipeline modules under src/lib/pipeline, not
+          a marketing list. If a pass is added there, it belongs here too. */}
+      <section className="passes" aria-label="What each review checks">
+        {[
+          ["Substantiation", "Is the claim supported by cited evidence?"],
+          ["Fair balance", "Is benefit stated without matching risk?"],
+          ["Comparative", "Is a head-to-head claim backed by a head-to-head trial?"],
+          ["Off-label", "Does the copy reach beyond the approved indication?"],
+          ["Safety omission", "Are known adverse events left unsaid?"],
+          ["Adverse events", "Do tolerability claims survive real FAERS signals?"],
+          ["Interactions", "Are contraindicated combinations acknowledged?"],
+          ["Regulatory", "Does the wording meet market-specific rules?"],
+          ["Citation quality", "Is the source current, primary and real?"],
+          ["IP / novelty", "Does the patent record support a first-in-class claim?"],
+          ["Market claim", "Is a #1-prescribed or share claim backed by filings?"],
+        ].map(([name, q]) => (
+          <div className="pass" key={name}>
+            <span className="pass-n">{name}</span>
+            <span className="pass-q">{q}</span>
+          </div>
+        ))}
+      </section>
+
     </>
   );
 }
@@ -622,7 +761,7 @@ function Verdict({
         : "info";
 
   return (
-    <div className="verdict">
+    <div className="verdict" data-sev={unchecked ? "muted" : sev}>
       <div className="verdict-top">
         <h2>
           <span className={`sev ${unchecked ? "muted" : sev}`} aria-hidden="true">
