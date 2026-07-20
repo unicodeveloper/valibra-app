@@ -1,8 +1,7 @@
 "use client";
 
+import { Markdown } from "../components/Markdown";
 import { useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
-import remarkGfm from "remark-gfm";
 import { DR_LABELS, DR_PLACEHOLDER, DR_SOURCE, isDone, type DrKind, type DrTask } from "../dr";
 
 export function ResearchView({
@@ -141,7 +140,7 @@ function DrCard({ task: t }: { task: DrTask }) {
       {t.output && (
         <div className="dsec" style={{ marginTop: 8 }}>
           <div className="body">
-            <Streamdown remarkPlugins={[remarkGfm]}>{t.output}</Streamdown>
+            <Markdown>{t.output}</Markdown>
           </div>
         </div>
       )}

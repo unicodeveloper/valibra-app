@@ -1,7 +1,6 @@
 "use client";
 
-import { Streamdown } from "streamdown";
-import remarkGfm from "remark-gfm";
+import { Markdown } from "./Markdown";
 import type { Finding } from "@/lib/schemas";
 import {
   CATEGORY_LABEL,
@@ -114,7 +113,7 @@ export function FindingCard({
           )}
 
           <div className="rationale">
-            <Streamdown remarkPlugins={[remarkGfm]}>{finding.detail}</Streamdown>
+            <Markdown>{finding.detail}</Markdown>
           </div>
 
           {finding.evidence.length > 0 && (

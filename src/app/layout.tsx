@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Public_Sans, Source_Serif_4, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthInitializer } from "@/app/components/auth";
 
 /**
  * Type system.
@@ -61,7 +62,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthInitializer>{children}</AuthInitializer>
+      </body>
     </html>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
+import { Markdown } from "../components/Markdown";
 import { useEffect, useRef, useState } from "react";
-import { Streamdown } from "streamdown";
-import remarkGfm from "remark-gfm";
 import type { Dossier } from "@/lib/schemas";
 import { datasetLabel } from "../review-model";
 import type { DrKind } from "../dr";
+import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
 
 interface DossierResp {
   drug: string;
@@ -36,13 +36,20 @@ export function DossierView({
     setError(null);
     setResp(null);
     try {
+      const headers = await authorizedHeaders({ "Content-Type": "application/json" });
       const r = await fetch("/api/dossier", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ drug: d }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Dossier failed.");
+      if (!r.ok) {
+        if (handleAuthFailure(r.status, data)) {
+          setError("Please sign in with Valyu to generate a dossier.");
+          return;
+        }
+        throw new Error(data.error || "Dossier failed.");
+      }
       setResp(data as DossierResp);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Dossier failed.");
@@ -150,7 +157,7 @@ function DossierReport({ resp }: { resp: DossierResp }) {
       <section className="dsec">
         <h3>{title}</h3>
         <div className="body">
-          <Streamdown remarkPlugins={[remarkGfm]}>{body}</Streamdown>
+          <Markdown>{body}</Markdown>
         </div>
       </section>
     ) : null;

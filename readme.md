@@ -175,6 +175,26 @@ npm run dev                  # http://localhost:3000
 Click **Run review** on the built-in fictional sample. (Don't paste confidential assets into a
 hosted instance — self-host for real work.)
 
+### Modes: who pays for Valyu
+
+Valibra runs in one of two modes, set by `NEXT_PUBLIC_APP_MODE`:
+
+| Mode | Sign-in | Who pays for retrieval | Configure |
+| --- | --- | --- | --- |
+| `self-hosted` (default) | none | the deployment's `VALYU_API_KEY` | just `VALYU_API_KEY` |
+| `valyu` | Valyu OAuth (PKCE) | each **reviewer's own Valyu credits** | the OAuth block in `.env.example` |
+
+In **valyu mode** a reviewer signs in with their Valyu account; every search, dossier, and
+DeepResearch task in that session is billed to *their* credits through the Valyu OAuth proxy — the
+deployment never needs an API key. Set `NEXT_PUBLIC_APP_MODE=valyu` and fill in the OAuth values
+(`NEXT_PUBLIC_VALYU_CLIENT_ID`, `VALYU_CLIENT_SECRET`, `NEXT_PUBLIC_VALYU_AUTH_URL`,
+`VALYU_APP_URL`, `NEXT_PUBLIC_REDIRECT_URI`), registering the redirect URI on your Valyu OAuth app.
+
+Anything other than `valyu` is treated as self-hosted, so a missing or misspelled mode fails safe to
+the key-based path rather than locking everyone out. The billing decision lives in one place —
+`src/lib/valyu-credentials.ts` — which every Valyu call routes through, so the two lanes stay
+behaviourally identical.
+
 ### Optional: persist the audit trail and claims library
 
 ```bash
@@ -191,11 +211,17 @@ the claims library has nothing to reuse.
 ```
 src/lib/schemas.ts        zod schemas for every LLM boundary
 src/lib/llm.ts            OpenAI structured-output + embedding helpers
-src/lib/valyu.ts          Valyu client + claim→dataset routing
+src/lib/valyu.ts          Valyu Search lane + claim→dataset routing
+src/lib/valyu-credentials.ts  billing context — app key vs signed-in user's credits
 src/lib/deepresearch.ts   DeepResearch lane (device · HCP · indication · surveillance · dossier)
+src/lib/oauth.ts          Valyu OAuth (PKCE) — authorize redirect, code challenge
+src/lib/app-mode.ts       self-hosted vs valyu mode
 src/lib/pipeline/         one module per check + index.ts (orchestrator)
 src/lib/db/               optional Postgres persistence + claims library
-src/app/api/              review · dossier · deepresearch · library
+src/app/api/              review · dossier · deepresearch · library · oauth (token · refresh)
+src/app/auth/valyu/callback   OAuth redirect handler
+src/app/stores/auth-store.ts  session + token refresh (zustand)
+src/app/components/auth/  sign-in modal · account menu · initializer
 src/app/views/            Review · Library · Dossier · Research tabs
 ```
 

@@ -1,3 +1,38 @@
+/* Tailwind, imported for one job only: Streamdown ships its component styles as
+   Tailwind utility classes, so without this its code blocks render as bare
+   markup. Two deliberate constraints keep it from touching anything else:
+
+   1. Preflight is NOT imported. Tailwind's reset would strip the borders, list
+      markers and heading sizes this file sets by element, quietly rewriting the
+      whole design system.
+   2. Utilities are confined to a cascade layer, so every unlayered rule below
+      beats them. Tailwind can style Streamdown's internals; it cannot win an
+      argument with the design system.
+
+   `@source` is required because Tailwind does not scan node_modules, and the
+   class names in question only exist in Streamdown's compiled output.
+   ========================================================================= */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../../node_modules/streamdown/dist";
+
+/* Streamdown selects its dark code theme with Tailwind's `dark:` variant, which
+   out of the box only reads the OS preference — so forcing Dark in the masthead
+   while the OS is light would have left a light-on-dark code block. This teaches
+   the variant the same rule the tokens follow: the pinned [data-theme] wins, and
+   the OS decides only when nothing is pinned. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* =========================================================================
    Valibra — design system
 
@@ -479,13 +514,13 @@ select {
   background: var(--paper);
   transition: border-color 0.14s ease, box-shadow 0.14s ease;
 }
-input[type="text"],
+input[type="text"]:hover,
 input[type="search"]:hover,
 textarea:hover,
 select:hover {
   border-color: var(--ink-3);
 }
-input[type="text"],
+input[type="text"]:focus,
 input[type="search"]:focus,
 textarea:focus,
 select:focus {
@@ -531,8 +566,11 @@ select {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 260px;
-  max-width: 100%;
+  /* Grow to fill the toolbar rather than sit at a stub width, but cap it so it
+     doesn't sprawl the full width of a 1400px panel on a wide screen. */
+  flex: 1 1 auto;
+  min-width: 220px;
+  max-width: 640px;
 }
 .field-clear input {
   padding-right: 32px;
@@ -760,41 +798,76 @@ code {
 
 /* ------------------------------------------------------------- intro -- */
 
-.intro {
-  margin: 18px 0 26px;
+/* Compose header.
+
+   Deliberately NOT a 40px hero sentence. This screen is the entry to a tool a
+   reviewer opens many times a day, not a landing page they see once — a giant
+   marketing headline greeting them on every edit reads as consumer-app splash,
+   not professional software. The register is a document editor's header: a
+   quiet accent eyebrow, a section-weight title, one factual line of what the
+   tool does. Presence comes from the type ramp and the accent tie to the brand
+   mark, not from size. */
+.compose {
+  margin: 20px 0 8px;
 }
-/* The measure lives on each child. Putting it on .intro made `ch` resolve
-   against the 14px body size, which choked the 40px headline into three lines. */
-.intro-t {
-  font-size: var(--t-display);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.08;
-  margin: 0 0 14px;
-  max-width: 19ch;
+.compose-head {
+  margin-bottom: 20px;
+}
+.compose-eyebrow {
+  font-size: var(--t-label);
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin: 0 0 8px;
+}
+.compose-head h2 {
+  font-size: var(--t-lg);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+  margin: 0;
+  max-width: 34ch;
   text-wrap: balance;
 }
-.intro-b {
-  font-size: var(--t-doc);
+.compose-lede {
+  font-size: var(--t-base);
   line-height: 1.6;
   color: var(--ink-2);
-  margin: 0;
-  max-width: 58ch;
-}
-@media (max-width: 620px) {
-  .intro-t {
-    font-size: var(--t-lg);
-  }
-  .intro-b {
-    font-size: var(--t-base);
-  }
+  margin: 9px 0 0;
+  max-width: 62ch;
 }
 
-/* The passes. Two columns of hairline-separated rows rather than a card grid:
-   this is a reference list a reviewer reads once, not eight things competing
-   for a click. */
+/* Form fields — a real field wrapper instead of inline-height spacer divs, so
+   the vertical rhythm is set once and the markup carries no layout literals. */
+.compose-form .field + .field {
+  margin-top: 16px;
+}
+.compose-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+/* The passes — a reference list under a quiet heading, read once. Two columns
+   of hairline-separated rows, never a card grid: a card grid would turn a
+   reference into eight things competing for a click. */
+.passes-section {
+  margin-top: 34px;
+}
+.passes-h {
+  font-size: var(--t-label);
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 2px;
+}
 .passes {
-  margin-top: 26px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 32px;
@@ -1652,11 +1725,10 @@ code {
   border-radius: var(--radius);
   box-shadow: var(--sh-2);
   padding: 34px 38px 38px;
-  /* Sized so the serif body lands at ~74ch without needing its own max-width.
-     At 780px the text measured 68ch but the section rules ran the full 702px,
-     leaving a 145px gutter to the right of every paragraph that read as a bug
-     rather than as a margin. The column and the measure now agree. */
-  max-width: 680px;
+  /* The card tracks the width of the search panel above it — a narrower
+     report read as a rendering bug rather than as a margin. The reading
+     measure is held by .dsec .body instead, so the card can be full width
+     without the serif body running to 95ch. */
 }
 @media (max-width: 620px) {
   .report {
@@ -1710,6 +1782,18 @@ code {
   color: var(--ink);
   line-height: 1.72;
 }
+/* The reading measure belongs to the prose, not to the container: a data table
+   is the one thing in a report that should be allowed the card's full width,
+   so it is the blocks that are capped rather than `.body` itself. */
+.dsec .body p,
+.dsec .body ul,
+.dsec .body ol,
+.dsec .body blockquote,
+.dsec .body h2,
+.dsec .body h3,
+.dsec .body h4 {
+  max-width: 74ch;
+}
 .dsec .body p {
   margin: 0 0 10px;
 }
@@ -1722,6 +1806,65 @@ code {
 .dsec .body ul,
 .dsec .body ol {
   padding-left: 20px;
+}
+/* A markdown table is a data exhibit, not prose: it leaves the serif reading
+   measure, drops to the sans/mono register the rest of the app's tables use,
+   and scrolls inside its own box so a wide comparison never widens the page. */
+.dsec .body .md-tbl {
+  width: 100%;
+  margin: 14px 0 18px;
+  font-family: var(--font-sans), sans-serif;
+}
+.dsec .body .md-tbl table {
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+/* Model-written headers are sentences ("Crestor % achieving goal"), so unlike
+   the app's own tables these wrap — two short header lines beat a table that
+   has to be scrolled to read its last column. */
+.dsec .body .md-tbl th {
+  white-space: normal;
+  max-width: 16ch;
+  line-height: 1.3;
+  vertical-align: bottom;
+}
+.dsec .body .md-tbl td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+/* The first column is the row's label (a timepoint, an arm) and is the one
+   cell that may legitimately wrap. */
+.dsec .body .md-tbl td:first-child {
+  white-space: normal;
+  min-width: 9ch;
+  font-weight: 600;
+}
+/* `code` above is styled as an inline chip — a bordered, non-wrapping token.
+   Inside a fenced block every Shiki token is also a `code` descendant, so the
+   chip has to be switched off there or a code block renders as a run of boxed
+   fragments that refuse to wrap. */
+.dsec .body pre code,
+.dsec .body pre code * {
+  background: none;
+  border: 0;
+  padding: 0;
+  white-space: inherit;
+  font-size: inherit;
+}
+.dsec .body pre {
+  margin: 12px 0;
+  max-width: 100%;
+}
+.dsec .body blockquote {
+  margin: 12px 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--line);
+  color: var(--ink-2);
+}
+.dsec .body hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
 }
 .dsec .body h2,
 .dsec .body h3 {
@@ -1959,6 +2102,280 @@ td.claim-c {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/* --------------------------------------------------------------- auth -- */
+
+/* The auth surfaces borrow the app's existing vocabulary rather than inventing
+   one: the same `--surface` cards, `--line` borders and shadow ladder as the
+   review chrome, so signing in feels like part of the desk, not a bolted-on
+   SaaS gate. Nothing here introduces a colour the design system doesn't already
+   define. */
+
+/* Masthead slot. Sits beside the theme control; holds either the Sign in
+   button or the account avatar. Fixed min-width so the bar doesn't reflow when
+   the session resolves after first paint. */
+.auth-slot {
+  position: relative;
+  align-self: center;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+}
+.auth-signin {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.auth-avatar-btn {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  line-height: 0;
+}
+.auth-avatar-btn:hover:not(:disabled) {
+  filter: none;
+}
+.auth-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-avatar-fallback {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Account dropdown — the small card under the avatar. */
+.auth-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: 232px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--sh-3);
+  padding: 12px;
+  animation: slide-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.auth-menu-id {
+  min-width: 0;
+}
+.auth-menu-name {
+  font-weight: 650;
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-menu-email {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-menu-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 10px -12px;
+}
+.auth-menu-out {
+  width: 100%;
+  justify-content: flex-start;
+  color: var(--crit);
+}
+.auth-menu-out:hover:not(:disabled) {
+  background: var(--crit-wash);
+  color: var(--crit);
+}
+
+/* Modal. Overlay dims and blurs the desk; the dialog is a plain surface card,
+   deliberately close in weight to the toast and panel it lives among. */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  backdrop-filter: blur(3px);
+  animation: auth-fade 0.16s ease;
+}
+@keyframes auth-fade {
+  from {
+    opacity: 0;
+  }
+}
+.auth-modal {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--sh-3);
+  padding: 26px 24px 20px;
+  animation: slide-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.auth-modal-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.auth-modal-x:hover:not(:disabled) {
+  background: var(--sunk);
+  color: var(--ink);
+  filter: none;
+}
+.auth-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+.auth-modal-head h2 {
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--ink);
+}
+.auth-modal-lede {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0 0 16px;
+}
+.auth-modal-lede strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+.auth-modal .err {
+  margin-bottom: 14px;
+}
+.auth-modal-cta {
+  width: 100%;
+  justify-content: center;
+  padding: 11px 15px;
+  font-size: 14px;
+}
+.auth-modal-foot {
+  margin: 14px 0 0;
+  text-align: center;
+}
+.auth-modal-foot a {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+.auth-modal-foot a:hover {
+  text-decoration: underline;
+}
+
+/* Callback page — the interstitial while the code is exchanged for tokens. */
+.auth-callback {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--paper);
+}
+.auth-callback-card {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--sh-2);
+  padding: 40px 28px;
+}
+.auth-callback-card h1 {
+  font-size: var(--t-md);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 18px 0 6px;
+  color: var(--ink);
+}
+.auth-callback-card p {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* Spinner — a ring with one accent-tinted quarter, matching the app's accent. */
+.auth-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  border: 3px solid var(--line-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: auth-spin 0.7s linear infinite;
+}
+.auth-spinner-sm {
+  width: 15px;
+  height: 15px;
+  border-width: 2px;
+  margin: 0;
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success / failure glyphs on the callback card. Colour is reinforced by the
+   glyph and the heading word, never carried alone — the same rule the review
+   severities follow. */
+.auth-glyph {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+}
+.auth-glyph-ok {
+  background: var(--ok-wash);
+  color: var(--ok);
+}
+.auth-glyph-bad {
+  background: var(--crit-wash);
+  color: var(--crit);
 }
 
 /* ------------------------------------------------------------- print -- */

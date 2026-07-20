@@ -16,6 +16,7 @@ import {
   type Decision,
 } from "../review-model";
 import type { DrKind } from "../dr";
+import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
 
 const MARKETS = ["US", "EU", "UK"] as const;
 type Market = (typeof MARKETS)[number];
@@ -101,15 +102,26 @@ export function ReviewView({
     setUnsaved(0);
 
     try {
+      // In valyu mode this attaches the reviewer's token so the run bills their
+      // credits; in self-hosted mode it's a no-op and the server pays.
+      const headers = await authorizedHeaders({
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      });
       const res = await fetch("/api/review", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        headers,
         body: JSON.stringify({ assetText, assetName, markets }),
         signal: ac.signal,
       });
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
+        // An expired/absent session reopens sign-in rather than showing a raw error.
+        if (handleAuthFailure(res.status, data)) {
+          setError("Please sign in with Valyu to run a review.");
+          return;
+        }
         throw new Error(data.error || `Review failed (${res.status}).`);
       }
 
@@ -610,45 +622,44 @@ function Compose({
   error: string | null;
 }) {
   return (
-    <>
-      {/* First run used to be a bare textarea floating in half a viewport of
-          empty paper, which told a reviewer nothing about what the tool does or
-          what it checks. The statement and the pass list are the product's only
-          chance to explain itself before the first run. */}
-      <section className="intro">
-        <h2 className="intro-t">
-          Paste an asset. Every claim in it gets checked against the evidence.
-        </h2>
-        <p className="intro-b">
-          Valibra pulls each promotional claim out of your copy and puts it through the
-          passes below, against real biomedical literature, approved labelling and trial
-          records. Each claim comes back with a finding and its sources, for you to accept or
-          reject.
+    <div className="compose">
+      {/* A tool header, not a splash: it names the screen and states in one line
+          what a run does, then gets out of the way of the form. The passes list
+          below is the reference for what "checked" means. */}
+      <header className="compose-head">
+        <p className="compose-eyebrow">New review</p>
+        <h2>Check every claim against the evidence</h2>
+        <p className="compose-lede">
+          Valibra extracts each promotional claim and tests it against approved labelling, trial
+          records and the peer-reviewed literature. Every finding cites its source, for you to
+          accept or reject.
         </p>
-      </section>
+      </header>
 
-      <div className="panel">
-        <label htmlFor="asset-name">Asset name</label>
-        <input
-          id="asset-name"
-          type="text"
-          value={assetName}
-          onChange={(e) => setAssetName(e.target.value)}
-          placeholder="e.g. Q3 HCP detail aid"
-        />
+      <div className="panel compose-form">
+        <div className="field">
+          <label htmlFor="asset-name">Asset name</label>
+          <input
+            id="asset-name"
+            type="text"
+            value={assetName}
+            onChange={(e) => setAssetName(e.target.value)}
+            placeholder="e.g. Q3 HCP detail aid"
+          />
+        </div>
 
-        <div style={{ height: 16 }} />
+        <div className="field">
+          <label htmlFor="asset-text">Promotional asset text</label>
+          <textarea
+            id="asset-text"
+            value={assetText}
+            onChange={(e) => setAssetText(e.target.value)}
+            placeholder="Paste the promotional copy to review…"
+            spellCheck={false}
+          />
+        </div>
 
-        <label htmlFor="asset-text">Promotional asset text</label>
-        <textarea
-          id="asset-text"
-          value={assetText}
-          onChange={(e) => setAssetText(e.target.value)}
-          placeholder="Paste the promotional copy to review…"
-          spellCheck={false}
-        />
-
-        <div className="row" style={{ marginTop: 14, justifyContent: "space-between" }}>
+        <div className="compose-actions">
           <div className="row">
             <button onClick={onRun} disabled={disabled || !assetText.trim()}>
               Run review
@@ -679,7 +690,7 @@ function Compose({
         </div>
 
         {error && (
-          <p className="err" style={{ marginTop: 12 }}>
+          <p className="err" style={{ marginTop: 14 }}>
             <span aria-hidden="true">▲</span> {error}
           </p>
         )}
@@ -687,8 +698,10 @@ function Compose({
 
       {/* The passes are the actual pipeline modules under src/lib/pipeline, not
           a marketing list. If a pass is added there, it belongs here too. */}
-      <section className="passes" aria-label="What each review checks">
-        {[
+      <section className="passes-section" aria-label="What each review checks">
+        <p className="passes-h">Each claim is checked for</p>
+        <div className="passes">
+          {[
           ["Substantiation", "Is the claim supported by cited evidence?"],
           ["Fair balance", "Is benefit stated without matching risk?"],
           ["Comparative", "Is a head-to-head claim backed by a head-to-head trial?"],
@@ -700,15 +713,15 @@ function Compose({
           ["Citation quality", "Is the source current, primary and real?"],
           ["IP / novelty", "Does the patent record support a first-in-class claim?"],
           ["Market claim", "Is a #1-prescribed or share claim backed by filings?"],
-        ].map(([name, q]) => (
-          <div className="pass" key={name}>
-            <span className="pass-n">{name}</span>
-            <span className="pass-q">{q}</span>
-          </div>
-        ))}
+          ].map(([name, q]) => (
+            <div className="pass" key={name}>
+              <span className="pass-n">{name}</span>
+              <span className="pass-q">{q}</span>
+            </div>
+          ))}
+        </div>
       </section>
-
-    </>
+    </div>
   );
 }
 

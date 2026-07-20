@@ -1,4 +1,5 @@
-import { Valyu } from "valyu-js";
+import { type DeepResearchMode } from "valyu-js";
+import { valyuDeepResearchCreate, valyuDeepResearchStatus } from "./valyu-credentials";
 
 /**
  * The DeepResearch (DR) lane. Some MLR features depend on Valyu datasets that
@@ -10,15 +11,11 @@ import { Valyu } from "valyu-js";
  * client polls status() until `completed`, then renders the report.
  */
 
-let _client: Valyu | null = null;
-function client(): Valyu {
-  if (!_client) {
-    const apiKey = process.env.VALYU_API_KEY;
-    if (!apiKey) throw new Error("VALYU_API_KEY is not set");
-    _client = new Valyu(apiKey);
-  }
-  return _client;
-}
+/**
+ * Like the Search lane, both calls below route through the credential context
+ * so a signed-in reviewer's DeepResearch task is billed to their own Valyu
+ * credits rather than the deployment's key. See src/lib/valyu-credentials.ts.
+ */
 
 /** The DR-lane feature kinds — each backed by a DeepResearch-only dataset. */
 export type DrKind = "device" | "hcp" | "indication" | "surveillance" | "dossier";
@@ -27,6 +24,13 @@ interface KindSpec {
   label: string;
   feature: string;
   dataset: string; // human label of the DeepResearch-only dataset
+  /**
+   * DeepResearch depth. The targeted lookups (device / hcp / indication /
+   * surveillance) each interrogate a single dataset for a specific fact, so
+   * "fast" gets there without the reviewer waiting. The dossier synthesizes
+   * across every bio dataset, which is the one job "fast" is too shallow for.
+   */
+  mode: DeepResearchMode;
   buildQuery: (input: string) => string;
 }
 
@@ -36,6 +40,7 @@ export const DR_KINDS: Record<DrKind, KindSpec> = {
     label: "Device adverse events (MAUDE)",
     feature: "F21 — Medical-device MLR",
     dataset: "FDA Device Events (openFDA MAUDE)",
+    mode: "fast",
     buildQuery: (d) =>
       `Using FDA MAUDE medical-device adverse-event reports, summarize the reported adverse events, ` +
       `malfunctions, injuries, and safety signals for the medical device "${d}". Identify any signals ` +
@@ -46,6 +51,7 @@ export const DR_KINDS: Record<DrKind, KindSpec> = {
     label: "HCP verification (NPI)",
     feature: "F22 — HCP verification & transparency",
     dataset: "NPI Registry",
+    mode: "fast",
     buildQuery: (h) =>
       `Using the NPI Registry, verify the US healthcare provider "${h}": confirm the NPI number, ` +
       `name, primary taxonomy/specialty, and practice location. Note anything relevant to KOL vetting ` +
@@ -56,6 +62,7 @@ export const DR_KINDS: Record<DrKind, KindSpec> = {
     label: "Indication coding (WHO ICD)",
     feature: "F23 — Indication-language normalization",
     dataset: "WHO ICD",
+    mode: "fast",
     buildQuery: (c) =>
       `Using WHO ICD classification, map the condition/indication "${c}" to its standardized ICD ` +
       `code(s) and preferred term(s). Flag any mismatch between the promotional phrasing and the ` +
@@ -67,6 +74,7 @@ export const DR_KINDS: Record<DrKind, KindSpec> = {
     label: "Surveillance / trend (CDC)",
     feature: "F25 — Surveillance-claim checker",
     dataset: "CDC Wastewater / surveillance",
+    mode: "fast",
     buildQuery: (claim) =>
       `Using CDC wastewater and public-health surveillance data, assess the surveillance/trend claim: ` +
       `"${claim}". Is the trend (rising/falling incidence or prevalence) supported by current ` +
@@ -79,6 +87,9 @@ export const DR_KINDS: Record<DrKind, KindSpec> = {
     label: "Deep dossier (all datasets)",
     feature: "F18 (deep) + F24 — MoA/binding depth",
     dataset: "PubMed · ClinicalTrials · DailyMed · FAERS · Open Targets · BindingDB",
+    // Six datasets synthesized into one dossier, and the UI already tells the
+    // reviewer this takes minutes — depth is the whole point of this lane.
+    mode: "heavy",
     buildQuery: (d) =>
       `Compile a comprehensive evidence dossier for the drug "${d}": (1) approved indication(s); ` +
       `(2) key efficacy evidence from pivotal trials and meta-analyses; (3) safety profile — boxed ` +
@@ -100,11 +111,11 @@ export interface DrCreateResult {
 /** Kick off a DeepResearch task for a DR-only feature. Returns immediately. */
 export async function createDeepResearch(kind: DrKind, input: string): Promise<DrCreateResult> {
   const spec = DR_KINDS[kind];
-  const res: any = await client().deepresearch.create({
+  const res: any = await valyuDeepResearchCreate({
     query: spec.buildQuery(input),
-    // "fast" keeps these targeted lookups quick; DeepResearch reaches the
-    // DR-only datasets (MAUDE / NPI / WHO ICD) that Search cannot.
-    mode: "fast",
+    // Depth is per-kind — see the `mode` note on KindSpec. DeepResearch is what
+    // reaches the DR-only datasets (MAUDE / NPI / WHO ICD / BindingDB) at all.
+    mode: spec.mode,
     search: { searchType: "all" },
   });
   return {
@@ -128,7 +139,7 @@ export interface DrStatusResult {
 
 /** Poll a DeepResearch task. The client calls this until `done` is true. */
 export async function getDeepResearchStatus(taskId: string): Promise<DrStatusResult> {
-  const res: any = await client().deepresearch.status(taskId);
+  const res: any = await valyuDeepResearchStatus(taskId);
   const status: string = res?.status ?? "running";
   const done = status === "completed" || status === "failed" || status === "cancelled";
   const output =

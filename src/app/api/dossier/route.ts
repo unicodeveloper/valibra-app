@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildDossier } from "@/lib/pipeline/dossier";
+import { withValyuBilling, ValyuAuthError } from "@/lib/valyu-credentials";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -23,12 +24,17 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const result = await buildDossier(parsed.data.drug);
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Dossier failed.";
-    console.error("buildDossier failed:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return withValyuBilling(req, async () => {
+    try {
+      const result = await buildDossier(parsed.data.drug);
+      return NextResponse.json(result);
+    } catch (err) {
+      if (err instanceof ValyuAuthError) {
+        return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+      }
+      const message = err instanceof Error ? err.message : "Dossier failed.";
+      console.error("buildDossier failed:", err);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }

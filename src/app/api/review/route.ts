@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runReview } from "@/lib/pipeline";
 import { persistReview, saveToLibrary } from "@/lib/db/client";
+import {
+  bearerToken,
+  runScoped,
+  retrievalReadiness,
+  ValyuAuthError,
+} from "@/lib/valyu-credentials";
 import type { AuditEntry, ReviewResult } from "@/lib/schemas";
 
 export const runtime = "nodejs";
@@ -39,24 +45,48 @@ export async function POST(req: Request) {
   }
   const { assetText, assetName, markets } = parsed.data;
 
+  // Who pays for this review's ~15 Valyu searches. Captured here and threaded
+  // explicitly into the run below, rather than relying on an ambient scope, so
+  // it survives into the streaming path's deferred callback. See runScoped.
+  const token = bearerToken(req);
+
+  // Refuse before any Valyu spend if this request can't pay — valyu mode
+  // without a token, or self-hosted without a key.
+  const ready = runScoped(token, retrievalReadiness);
+  if (!ready.ok) {
+    return NextResponse.json(
+      ready.status === 401 ? { error: ready.error, requiresReauth: true } : { error: ready.error },
+      { status: ready.status },
+    );
+  }
+
   // Clients that ask for a stream get the audit trail live as the pipeline
   // walks it; everyone else gets the same single JSON payload as before.
   if (req.headers.get("accept")?.includes("text/event-stream")) {
-    return streamReview(assetText, assetName, markets);
+    return streamReview(assetText, assetName, markets, token);
   }
 
   try {
-    const result = await runReview(assetText, assetName, markets);
+    const result = await runScoped(token, () => runReview(assetText, assetName, markets));
     persist(result);
     return NextResponse.json(result);
   } catch (err) {
+    // A dead token mid-review is a reauth prompt, not a generic 500.
+    if (err instanceof ValyuAuthError) {
+      return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+    }
     const message = err instanceof Error ? err.message : "Review failed.";
     console.error("runReview failed:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-function streamReview(assetText: string, assetName: string, markets: string[]) {
+function streamReview(
+  assetText: string,
+  assetName: string,
+  markets: string[],
+  token: string | null,
+) {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -72,15 +102,24 @@ function streamReview(assetText: string, assetName: string, markets: string[]) {
       };
 
       try {
-        const result = await runReview(assetText, assetName, markets, (entry: AuditEntry) =>
-          send("stage", entry),
+        // Re-bind the billing credential here: this callback runs after the
+        // route handler returned, so any ambient scope is already gone.
+        const result = await runScoped(token, () =>
+          runReview(assetText, assetName, markets, (entry: AuditEntry) => send("stage", entry)),
         );
         persist(result);
         send("done", result);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Review failed.";
+        const message =
+          err instanceof ValyuAuthError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Review failed.";
         console.error("runReview failed:", err);
-        send("fail", { error: message });
+        // Carry the reauth hint through the stream so the client can reopen
+        // sign-in on an expired token, same as the non-streaming path.
+        send("fail", { error: message, requiresReauth: err instanceof ValyuAuthError });
       } finally {
         closed = true;
         try {

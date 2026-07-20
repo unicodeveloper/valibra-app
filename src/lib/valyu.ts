@@ -1,4 +1,4 @@
-import { Valyu } from "valyu-js";
+import { valyuSearch } from "./valyu-credentials";
 import type { ClaimType, Evidence } from "./schemas";
 
 /**
@@ -23,15 +23,13 @@ function normalizeDrug(name: string): string {
   return cleaned || name.trim();
 }
 
-let _client: Valyu | null = null;
-function client(): Valyu {
-  if (!_client) {
-    const apiKey = process.env.VALYU_API_KEY;
-    if (!apiKey) throw new Error("VALYU_API_KEY is not set");
-    _client = new Valyu(apiKey);
-  }
-  return _client;
-}
+/**
+ * Every search below goes through `valyuSearch`, which decides who pays: the
+ * deployment's own API key in self-hosted mode, or — when a reviewer has signed
+ * in with Valyu — that reviewer's credits, via the OAuth proxy. Both lanes
+ * return the same response shape, so nothing in this file has to care which
+ * one served it. See src/lib/valyu-credentials.ts.
+ */
 
 // Dataset ids in the Valyu network (Search/Answer lane — real-time inline).
 export const SOURCES = {
@@ -169,7 +167,7 @@ async function search(
   snippetChars = 1200,
 ): Promise<Retrieval> {
   if (haltReason) return { evidence: [], error: haltReason };
-  const res: any = await client().search(query, {
+  const res: any = await valyuSearch(query, {
     includedSources: sources,
     maxNumResults: maxResults,
   });
@@ -298,7 +296,7 @@ export async function getMarketEvidence(query: string): Promise<Retrieval> {
  */
 export async function searchRegulatory(query: string): Promise<Retrieval> {
   if (haltReason) return { evidence: [], error: haltReason };
-  const res: any = await client().search(query, {
+  const res: any = await valyuSearch(query, {
     searchType: "web",
     maxNumResults: 6,
     // Steer retrieval toward actual enforcement precedent, not drug labels.

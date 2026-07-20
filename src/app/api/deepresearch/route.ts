@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createDeepResearch, getDeepResearchStatus, DR_KINDS } from "@/lib/deepresearch";
+import { withValyuBilling, ValyuAuthError } from "@/lib/valyu-credentials";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // create returns fast; the task runs async on Valyu
@@ -25,19 +26,27 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  try {
-    const res = await createDeepResearch(parsed.data.kind, parsed.data.input);
-    return NextResponse.json(res);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "DeepResearch create failed.";
-    console.error("createDeepResearch failed:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return withValyuBilling(req, async () => {
+    try {
+      const res = await createDeepResearch(parsed.data.kind, parsed.data.input);
+      return NextResponse.json(res);
+    } catch (err) {
+      if (err instanceof ValyuAuthError) {
+        return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+      }
+      const message = err instanceof Error ? err.message : "DeepResearch create failed.";
+      console.error("createDeepResearch failed:", err);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }
 
 /** Poll a DeepResearch task: GET /api/deepresearch?id=<taskId>. Also lists kinds. */
 export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
+
+  // Listing the DR feature kinds spends nothing and needs no session — keep it
+  // open so the UI can render the Research tab before anyone signs in.
   if (!id) {
     return NextResponse.json({
       kinds: Object.entries(DR_KINDS).map(([k, s]) => ({
@@ -48,11 +57,19 @@ export async function GET(req: Request) {
       })),
     });
   }
-  try {
-    const status = await getDeepResearchStatus(id);
-    return NextResponse.json(status);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "DeepResearch status failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+
+  // Polling a task reaches into the owner's account, so it bills the same way
+  // the create did — the poll must present the same reviewer's token.
+  return withValyuBilling(req, async () => {
+    try {
+      const status = await getDeepResearchStatus(id);
+      return NextResponse.json(status);
+    } catch (err) {
+      if (err instanceof ValyuAuthError) {
+        return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+      }
+      const message = err instanceof Error ? err.message : "DeepResearch status failed.";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }
