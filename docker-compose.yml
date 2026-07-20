@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlr
+      POSTGRES_PASSWORD: mlr
+      POSTGRES_DB: mlr
+    ports:
+      - "5432:5432"
+    volumes:
+      - mlr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mlr_pgdata:

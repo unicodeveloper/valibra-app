@@ -1,0 +1,31 @@
+{
+  "name": "mklrsciences",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) review engine — Phase 0 (the substantiation spine).",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:init": "psql \"$DATABASE_URL\" -f src/lib/db/schema.sql"
+  },
+  "dependencies": {
+    "next": "^15.5.4",
+    "openai": "^4.104.0",
+    "postgres": "^3.4.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remark-gfm": "^4.0.1",
+    "streamdown": "^1.3.0",
+    "valyu-js": "^2.2.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.7.0"
+  }
+}
