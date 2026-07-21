@@ -4,12 +4,15 @@
   "private": true,
   "description": "Open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) review engine — Phase 0 (the substantiation spine).",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "db:init": "psql \"$DATABASE_URL\" -f src/lib/db/schema.sql"
+    "db:init": "node scripts/db-init.mjs"
   },
   "dependencies": {
     "next": "^15.5.4",

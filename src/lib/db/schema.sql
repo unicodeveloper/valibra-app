@@ -70,3 +70,51 @@ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+
+-- ============================================================================
+-- Migration patterns
+--
+-- This file is re-run in full on every deploy (railway.json → preDeployCommand
+-- → `npm run db:init`). So every statement must be safe to run repeatedly and
+-- must never lose data. Additive changes are trivial; destructive ones need a
+-- guard so the SECOND run is a no-op instead of an error.
+--
+-- ADDITIVE — just add the statement, no guard needed:
+--
+--   CREATE TABLE IF NOT EXISTS notes (
+--     id UUID PRIMARY KEY,
+--     body TEXT NOT NULL
+--   );
+--   ALTER TABLE reviews    ADD COLUMN IF NOT EXISTS reviewer TEXT NOT NULL DEFAULT '';
+--   CREATE INDEX IF NOT EXISTS idx_reviews_drug ON reviews(drug_name);
+--
+-- DESTRUCTIVE / TRANSFORMING — wrap in a guard so re-running is a no-op.
+-- Postgres has no "IF EXISTS" form for these, so gate on the catalog:
+--
+--   -- Rename a column (only if the old name is still present):
+--   DO $$
+--   BEGIN
+--     IF EXISTS (SELECT 1 FROM information_schema.columns
+--                WHERE table_name = 'reviews' AND column_name = 'drug_name') THEN
+--       ALTER TABLE reviews RENAME COLUMN drug_name TO product_name;
+--     END IF;
+--   END $$;
+--
+--   -- Add a NOT NULL column to a table that already has rows: add it nullable,
+--   -- backfill, THEN enforce NOT NULL — each step idempotent.
+--   ALTER TABLE reviews ADD COLUMN IF NOT EXISTS market TEXT;
+--   UPDATE reviews SET market = 'US' WHERE market IS NULL;
+--   ALTER TABLE reviews ALTER COLUMN market SET NOT NULL;   -- no-op once set
+--
+--   -- Change a column type (guard so it doesn't re-run against the new type):
+--   DO $$
+--   BEGIN
+--     IF (SELECT data_type FROM information_schema.columns
+--         WHERE table_name = 'claims_library' AND column_name = 'confidence') = 'real' THEN
+--       ALTER TABLE claims_library ALTER COLUMN confidence TYPE DOUBLE PRECISION;
+--     END IF;
+--   END $$;
+--
+-- DROPs (`DROP TABLE IF EXISTS` / `DROP COLUMN IF EXISTS`) are idempotent on
+-- their own — but they delete data, so add them only when you truly mean it.
+-- ============================================================================

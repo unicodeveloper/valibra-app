@@ -14,7 +14,18 @@ function sql() {
   if (_sql) return _sql;
   const url = process.env.DATABASE_URL;
   if (!url) return null;
-  _sql = postgres(url);
+
+  // TLS handling for managed Postgres (Railway, Neon, Supabase, …). A local dev
+  // DB and Railway's *private* network (`*.railway.internal`) speak plaintext;
+  // a public/proxy host needs TLS, and managed providers use certs that don't
+  // chain to a system root, so we require TLS without CA verification there.
+  // Explicit `sslmode` in the URL always wins.
+  const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/i.test(url);
+  const internal = /\.railway\.internal[:/]/i.test(url);
+  const sslInUrl = /[?&]sslmode=/i.test(url);
+  const ssl = !sslInUrl && !local && !internal ? { rejectUnauthorized: false } : undefined;
+
+  _sql = postgres(url, ssl ? { ssl } : {});
   return _sql;
 }
 
