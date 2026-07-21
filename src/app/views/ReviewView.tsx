@@ -17,7 +17,8 @@ import {
   type Decision,
 } from "../review-model";
 import type { DrKind } from "../dr";
-import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
+import { authorizedHeaders, handleAuthFailure, useAuthStore } from "../stores/auth-store";
+import { isValyuMode } from "@/lib/app-mode";
 
 const MARKETS = ["US", "EU", "UK"] as const;
 type Market = (typeof MARKETS)[number];
@@ -88,6 +89,13 @@ export function ReviewView({
   }
 
   const runReview = useCallback(async () => {
+    // In valyu mode a review bills the reviewer's own credits, so a signed-out
+    // click opens sign-in proactively rather than firing a request that 401s.
+    if (isValyuMode() && !useAuthStore.getState().isAuthenticated) {
+      useAuthStore.getState().openSignInModal();
+      return;
+    }
+
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -220,19 +228,21 @@ export function ReviewView({
 
       const reviewId = result?.reviewId;
       if (!reviewId) return;
-      void fetch(`/api/reviews/${reviewId}/decisions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Un-deciding is recorded as "cleared", not as an absence — the audit
-        // trail should show the reviewer changed their mind.
-        body: JSON.stringify({ findingId: id, decision: d ?? "cleared" }),
-      })
-        .then(async (r) => {
-          const data = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(data.error || `Save failed (${r.status}).`);
-          if (data.persisted === false && data.reason === "persistence_disabled") setPersistOff(true);
-        })
-        .catch(() => setUnsaved((n) => n + 1));
+      void (async () => {
+        const headers = await authorizedHeaders({ "Content-Type": "application/json" });
+        const r = await fetch(`/api/reviews/${reviewId}/decisions`, {
+          method: "POST",
+          headers,
+          // Un-deciding is recorded as "cleared", not as an absence — the audit
+          // trail should show the reviewer changed their mind.
+          body: JSON.stringify({ findingId: id, decision: d ?? "cleared" }),
+        });
+        const data = await r.json().catch(() => ({}));
+        // A dead session mid-triage reopens sign-in rather than silently dropping.
+        if (handleAuthFailure(r.status, data)) return;
+        if (!r.ok) throw new Error(data.error || `Save failed (${r.status}).`);
+        if (data.persisted === false && data.reason === "persistence_disabled") setPersistOff(true);
+      })().catch(() => setUnsaved((n) => n + 1));
     },
     [result],
   );

@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import { listLibrary } from "@/lib/db/client";
+import { withPersistenceScope, currentIdentity, ValyuAuthError } from "@/lib/valyu-credentials";
 
 export const runtime = "nodejs";
 
-/** F16 — list the reusable claims library (optionally filtered by ?drug=). */
+/** F16 — list the reusable claims library (optionally filtered by ?drug=),
+ *  scoped to the signed-in reviewer (valyu) or the global tenant (self-hosted). */
 export async function GET(req: Request) {
   const drug = new URL(req.url).searchParams.get("drug") ?? undefined;
-  try {
-    const entries = await listLibrary(drug);
-    return NextResponse.json({ entries, persistenceEnabled: Boolean(process.env.DATABASE_URL) });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to list library.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return withPersistenceScope(req, async () => {
+    try {
+      const owner = await currentIdentity();
+      const entries = await listLibrary(drug, owner);
+      return NextResponse.json({ entries, persistenceEnabled: Boolean(process.env.DATABASE_URL) });
+    } catch (err) {
+      if (err instanceof ValyuAuthError) {
+        return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+      }
+      const message = err instanceof Error ? err.message : "Failed to list library.";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }

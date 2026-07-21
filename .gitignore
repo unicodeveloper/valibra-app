@@ -27,3 +27,5 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+*.html
+*.md

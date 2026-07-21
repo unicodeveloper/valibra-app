@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildDossier } from "@/lib/pipeline/dossier";
 import { withValyuBilling, ValyuAuthError } from "@/lib/valyu-credentials";
+import { logServerError, publicErrorMessage } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
       if (err instanceof ValyuAuthError) {
         return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
       }
-      const message = err instanceof Error ? err.message : "Dossier failed.";
-      console.error("buildDossier failed:", err);
+      const message = publicErrorMessage(err, "Dossier failed. Check the server logs for details.");
+      logServerError("buildDossier failed", err);
       return NextResponse.json({ error: message }, { status: 500 });
     }
   });

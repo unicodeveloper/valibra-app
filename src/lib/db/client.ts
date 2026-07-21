@@ -1,13 +1,24 @@
 import postgres from "postgres";
 import type { ReviewResult } from "../schemas";
+import type { ValyuIdentity } from "../valyu-credentials";
 import { embed } from "../llm";
 
 /**
  * Optional Postgres persistence. If DATABASE_URL is unset, everything no-ops and
  * the pipeline still returns full results — the app runs with or without a DB.
+ *
+ * Every read and write is scoped by `owner`: the signed-in reviewer's identity
+ * in valyu mode, or `null` in self-hosted mode. NULL owner means "the single
+ * global tenant", and `IS NOT DISTINCT FROM` gives null-safe equality so one
+ * query serves both — a valyu request sees only its own rows, a self-hosted
+ * request sees the unowned global rows. Owner is always resolved server-side
+ * from the token (see currentIdentity), never trusted from the client.
  */
 
 export type DecisionValue = "accepted" | "rejected" | "cleared";
+
+/** Who a persisted row belongs to; null in self-hosted mode (global tenant). */
+export type Owner = ValyuIdentity | null;
 
 let _sql: ReturnType<typeof postgres> | null = null;
 function sql() {
@@ -29,13 +40,16 @@ function sql() {
   return _sql;
 }
 
-export async function persistReview(result: ReviewResult): Promise<void> {
+export async function persistReview(result: ReviewResult, owner: Owner): Promise<void> {
   const db = sql();
   if (!db) return; // persistence disabled
 
   await db`
-    INSERT INTO reviews (id, asset_name, drug_name, result)
-    VALUES (${result.reviewId}, ${result.assetName}, ${result.drugName}, ${db.json(result as never)})
+    INSERT INTO reviews (id, asset_name, drug_name, result, owner_sub, owner_email)
+    VALUES (
+      ${result.reviewId}, ${result.assetName}, ${result.drugName}, ${db.json(result as never)},
+      ${owner?.sub ?? null}, ${owner?.email ?? null}
+    )
     ON CONFLICT (id) DO NOTHING
   `;
 
@@ -57,7 +71,7 @@ export async function persistReview(result: ReviewResult): Promise<void> {
  * F16 — save the review's substantiated claims to the reusable claims library.
  * Only "supported" claims are stored, each with its Valyu-sourced evidence.
  */
-export async function saveToLibrary(result: ReviewResult): Promise<number> {
+export async function saveToLibrary(result: ReviewResult, owner: Owner): Promise<number> {
   const db = sql();
   if (!db) return 0;
 
@@ -83,13 +97,17 @@ export async function saveToLibrary(result: ReviewResult): Promise<number> {
     confidence: x.s!.verification.confidence,
     evidence: db.json(x.s!.evidence as never),
     embedding: embeddings[i] ? db.json(embeddings[i] as never) : null,
+    owner_sub: owner?.sub ?? null,
   }));
 
+  // Conflict target is the owner-scoped unique index (COALESCE(owner_sub,''),
+  // drug_name, claim_text) — the same claim under a different account is a
+  // distinct row, not an overwrite.
   // status is deliberately absent from the UPDATE set: a re-run must not demote a
   // claim a reviewer already confirmed, nor resurrect one they rejected.
   await db`
     INSERT INTO claims_library ${db(rows)}
-    ON CONFLICT (drug_name, claim_text) DO UPDATE
+    ON CONFLICT (COALESCE(owner_sub, ''), drug_name, claim_text) DO UPDATE
       SET verdict = EXCLUDED.verdict,
           confidence = EXCLUDED.confidence,
           evidence = EXCLUDED.evidence,
@@ -115,26 +133,37 @@ export async function recordDecision(
   reviewId: string,
   findingId: string,
   decision: DecisionValue,
-  reviewer = "",
+  reviewer: string,
+  owner: Owner,
 ): Promise<{ persisted: boolean; libraryStatus: string | null }> {
   const db = sql();
   if (!db) return { persisted: false, libraryStatus: null };
 
-  const rows = await db<{ exists: boolean }[]>`SELECT true AS exists FROM reviews WHERE id = ${reviewId}`;
+  // Ownership check and existence check in one: a review that isn't the
+  // caller's is indistinguishable from one that doesn't exist — never confirm
+  // another account's review exists, and never let a decision land on it.
+  const rows = await db<{ exists: boolean }[]>`
+    SELECT true AS exists FROM reviews
+    WHERE id = ${reviewId} AND owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
+  `;
   if (rows.length === 0) throw new Error(`Unknown review ${reviewId}`);
+
+  // In valyu mode the reviewer is the authenticated account, not a typed name:
+  // a compliance audit trail must attribute a decision to a verified identity.
+  const who = owner?.email || reviewer;
 
   await db`
     INSERT INTO finding_decisions (review_id, finding_id, decision, reviewer)
-    VALUES (${reviewId}, ${findingId}, ${decision}, ${reviewer})
+    VALUES (${reviewId}, ${findingId}, ${decision}, ${who})
   `;
 
   await db`
     INSERT INTO audit_entries (review_id, ts, step, detail)
     VALUES (${reviewId}, now(), 'decision',
-            ${`Finding ${findingId} ${decision}${reviewer ? ` by ${reviewer}` : ""}.`})
+            ${`Finding ${findingId} ${decision}${who ? ` by ${who}` : ""}.`})
   `;
 
-  const libraryStatus = await syncLibraryStatus(reviewId, findingId, decision);
+  const libraryStatus = await syncLibraryStatus(reviewId, findingId, decision, owner);
   return { persisted: true, libraryStatus };
 }
 
@@ -149,12 +178,14 @@ async function syncLibraryStatus(
   reviewId: string,
   findingId: string,
   decision: DecisionValue,
+  owner: Owner,
 ): Promise<string | null> {
   const db = sql();
   if (!db) return null;
 
   const [row] = await db<{ result: ReviewResult }[]>`
-    SELECT result FROM reviews WHERE id = ${reviewId}
+    SELECT result FROM reviews
+    WHERE id = ${reviewId} AND owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
   `;
   if (!row) return null;
 
@@ -173,19 +204,27 @@ async function syncLibraryStatus(
        SET status = ${status},
            reviewed_at = ${decision === "cleared" ? null : new Date()}
      WHERE drug_name = ${result.drugName} AND claim_text = ${claim.text}
+       AND owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
   `;
   return status;
 }
 
-/** Current decision per finding for a review — the newest row wins. */
-export async function getDecisions(reviewId: string): Promise<Record<string, DecisionValue>> {
+/** Current decision per finding for a review — the newest row wins. Scoped to
+ *  the owner via the parent review, so decisions on another account's review
+ *  never surface. */
+export async function getDecisions(
+  reviewId: string,
+  owner: Owner,
+): Promise<Record<string, DecisionValue>> {
   const db = sql();
   if (!db) return {};
   const rows = await db<{ finding_id: string; decision: DecisionValue }[]>`
-    SELECT DISTINCT ON (finding_id) finding_id, decision
-    FROM finding_decisions
-    WHERE review_id = ${reviewId}
-    ORDER BY finding_id, decided_at DESC, id DESC
+    SELECT DISTINCT ON (fd.finding_id) fd.finding_id, fd.decision
+    FROM finding_decisions fd
+    JOIN reviews r ON r.id = fd.review_id
+    WHERE fd.review_id = ${reviewId}
+      AND r.owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
+    ORDER BY fd.finding_id, fd.decided_at DESC, fd.id DESC
   `;
   const out: Record<string, DecisionValue> = {};
   for (const r of rows) if (r.decision !== "cleared") out[r.finding_id] = r.decision;
@@ -201,8 +240,8 @@ export interface ReviewSummary {
   decided_count: number;
 }
 
-/** Past reviews, newest first — the history list. */
-export async function listReviews(limit = 50): Promise<ReviewSummary[]> {
+/** Past reviews, newest first — the history list, scoped to the owner. */
+export async function listReviews(owner: Owner, limit = 50): Promise<ReviewSummary[]> {
   const db = sql();
   if (!db) return [];
   return db<ReviewSummary[]>`
@@ -219,20 +258,27 @@ export async function listReviews(limit = 50): Promise<ReviewSummary[]> {
               ORDER BY finding_id, decided_at DESC, id DESC
             ) latest WHERE latest.decision <> 'cleared') AS decided_count
     FROM reviews r
+    WHERE r.owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
     ORDER BY r.created_at DESC
     LIMIT ${limit}
   `;
 }
 
-/** Reopen a past review: the stored result plus the decisions made on it. */
+/** Reopen a past review: the stored result plus the decisions made on it.
+ *  Returns null (→404) for a review that isn't the owner's, so a guessed UUID
+ *  can't read another account's asset. */
 export async function getReview(
   id: string,
+  owner: Owner,
 ): Promise<{ result: ReviewResult; decisions: Record<string, DecisionValue> } | null> {
   const db = sql();
   if (!db) return null;
-  const [row] = await db<{ result: ReviewResult }[]>`SELECT result FROM reviews WHERE id = ${id}`;
+  const [row] = await db<{ result: ReviewResult }[]>`
+    SELECT result FROM reviews
+    WHERE id = ${id} AND owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
+  `;
   if (!row) return null;
-  return { result: row.result, decisions: await getDecisions(id) };
+  return { result: row.result, decisions: await getDecisions(id, owner) };
 }
 
 export interface LibraryEntry {
@@ -247,16 +293,21 @@ export interface LibraryEntry {
   created_at: string;
 }
 
-/** List saved library claims, optionally filtered by drug. */
-export async function listLibrary(drug?: string): Promise<LibraryEntry[]> {
+/** List saved library claims for the owner, optionally filtered by drug. */
+export async function listLibrary(drug: string | undefined, owner: Owner): Promise<LibraryEntry[]> {
   const db = sql();
   if (!db) return [];
   const rows = drug
     ? await db<LibraryEntry[]>`
         SELECT drug_name, claim_text, claim_type, verdict, confidence, evidence, embedding, status, created_at
-        FROM claims_library WHERE drug_name ILIKE ${"%" + drug + "%"} ORDER BY created_at DESC LIMIT 200`
+        FROM claims_library
+        WHERE drug_name ILIKE ${"%" + drug + "%"}
+          AND owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
+        ORDER BY created_at DESC LIMIT 200`
     : await db<LibraryEntry[]>`
         SELECT drug_name, claim_text, claim_type, verdict, confidence, evidence, embedding, status, created_at
-        FROM claims_library ORDER BY created_at DESC LIMIT 200`;
+        FROM claims_library
+        WHERE owner_sub IS NOT DISTINCT FROM ${owner?.sub ?? null}
+        ORDER BY created_at DESC LIMIT 200`;
   return rows;
 }

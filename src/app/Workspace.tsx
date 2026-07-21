@@ -8,7 +8,7 @@ import { LibraryView } from "./views/LibraryView";
 import { ResearchView } from "./views/ResearchView";
 import { HistoryView } from "./views/HistoryView";
 import { ThemeToggle } from "./components/ThemeToggle";
-import { SignInModal, UserMenu } from "./components/auth";
+import { SignInGate, SignInModal, UserMenu } from "./components/auth";
 import { authorizedHeaders, handleAuthFailure } from "./stores/auth-store";
 import { DR_LABELS, isDone, type DrKind, type DrTask } from "./dr";
 import type { ReviewResult } from "@/lib/schemas";
@@ -125,8 +125,10 @@ export function Workspace({
     setReviewError(null);
     setView("review");
     try {
-      const r = await fetch(`/api/reviews/${id}`);
+      const r = await fetch(`/api/reviews/${id}`, { headers: await authorizedHeaders() });
       const data = await r.json();
+      // A review is per-account in valyu mode; an expired session reopens sign-in.
+      if (handleAuthFailure(r.status, data)) return;
       if (!r.ok) throw new Error(data.error || "Could not open that review.");
       setReopened({ nonce: Date.now(), result: data.result, decisions: data.decisions ?? {} });
     } catch (e) {
@@ -336,17 +338,31 @@ export function Workspace({
               reopened={reopened}
             />
           ))}
-        {view === "history" && <HistoryView onOpen={openReview} />}
-        {view === "library" && <LibraryView />}
-        {view === "dossier" && (
-          <DossierView
-            drug={dossierDrug}
-            setDrug={setDossierDrug}
-            autoDrug={autoDrug}
-            onStartDr={startDr}
-          />
+        {view === "history" && (
+          <SignInGate title="Sign in to see your review history">
+            <HistoryView onOpen={openReview} />
+          </SignInGate>
         )}
-        {view === "research" && <ResearchView tasks={drTasks} onStart={startDr} />}
+        {view === "library" && (
+          <SignInGate title="Sign in to see your claims library">
+            <LibraryView />
+          </SignInGate>
+        )}
+        {view === "dossier" && (
+          <SignInGate title="Sign in to build an evidence dossier">
+            <DossierView
+              drug={dossierDrug}
+              setDrug={setDossierDrug}
+              autoDrug={autoDrug}
+              onStartDr={startDr}
+            />
+          </SignInGate>
+        )}
+        {view === "research" && (
+          <SignInGate title="Sign in to run deep research">
+            <ResearchView tasks={drTasks} onStart={startDr} />
+          </SignInGate>
+        )}
       </main>
 
       {/* Announced politely so a completion reaches a screen reader wherever the

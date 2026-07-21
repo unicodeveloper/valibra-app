@@ -20,7 +20,14 @@ import { isValyuMode } from "@/lib/app-mode";
 export function UserMenu() {
   const { user, isAuthenticated, isLoading, signOut, openSignInModal } = useAuthStore();
   const [open, setOpen] = useState(false);
+  // An avatar URL from an OIDC `picture` claim is arbitrary and may 404 or be
+  // hotlink-blocked; when it fails to load we drop to the initial rather than
+  // leave the browser's broken-image glyph. Reset per URL so a new sign-in with
+  // a working picture isn't suppressed by a previous one's failure.
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setAvatarFailed(false), [user?.picture]);
 
   // Dismiss the dropdown on an outside click, the same way any menu in this app
   // would behave. Bound only while open so we're not listening needlessly.
@@ -58,12 +65,21 @@ export function UserMenu() {
         aria-label="Account"
         onClick={() => setOpen((v) => !v)}
       >
-        {user.picture ? (
+        {user.picture && !avatarFailed ? (
           // Plain img, not next/image: the source is an arbitrary external
           // avatar URL and this avoids threading remote-image config for one
-          // 30px picture.
+          // 30px picture. no-referrer so avatar CDNs (Google, GitHub) that
+          // reject cross-origin hotlinks by Referer still serve the image.
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="auth-avatar" src={user.picture} alt="" width={30} height={30} />
+          <img
+            className="auth-avatar"
+            src={user.picture}
+            alt=""
+            width={30}
+            height={30}
+            referrerPolicy="no-referrer"
+            onError={() => setAvatarFailed(true)}
+          />
         ) : (
           <span className="auth-avatar auth-avatar-fallback" aria-hidden="true">
             {initial}

@@ -201,6 +201,98 @@ export class ValyuAuthError extends Error {
   }
 }
 
+/* ── Identity ────────────────────────────────────────────────────────────────
+ *
+ * Who is signed in, for scoping *persistence* (review history, claims library,
+ * decisions) to one Valyu account. This is a different question from billing:
+ * the access token says who *pays* for a search; the identity says whose stored
+ * *data* a request may see. In valyu mode two reviewers sign in with their own
+ * accounts, so their history and library must not bleed across each other.
+ *
+ * Identity is always derived server-side from the token — never trusted from
+ * the client — so a caller can't read another account's data by claiming its
+ * `sub`. In self-hosted mode there is no token and no user: identity is null and
+ * persistence stays global (the single tenant that owns the deployment).
+ */
+
+export interface ValyuIdentity {
+  /** OIDC subject — the stable per-account id we scope stored data by. */
+  sub: string;
+  /** Email, for attributing decisions in the audit trail. May be empty. */
+  email: string;
+}
+
+/**
+ * userinfo is a network round trip, and a reviewer opening the History tab
+ * shouldn't pay it per row. Cache by token for a short window — long enough to
+ * amortize a burst of persistence calls, short enough that a revoked token
+ * stops resolving quickly. Keyed by the opaque token, so a new token (refresh,
+ * different user) never reads a stale entry.
+ */
+const IDENTITY_TTL_MS = 60_000;
+const identityCache = new Map<string, { identity: ValyuIdentity; expires: number }>();
+
+async function resolveIdentity(accessToken: string): Promise<ValyuIdentity> {
+  const cached = identityCache.get(accessToken);
+  if (cached && cached.expires > Date.now()) return cached.identity;
+
+  const res = await fetch(`${VALYU_APP_URL}/api/oauth/userinfo`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  // A dead token here is the same reauth signal the proxy raises mid-flight.
+  if (res.status === 401 || res.status === 403) {
+    identityCache.delete(accessToken);
+    throw new ValyuAuthError("Session expired. Please sign in again.");
+  }
+  if (!res.ok) throw new Error(`Could not resolve Valyu identity (HTTP ${res.status}).`);
+
+  const info = await res.json();
+  if (!info?.sub) throw new Error("Valyu userinfo did not return a subject.");
+
+  const identity: ValyuIdentity = { sub: String(info.sub), email: info.email ? String(info.email) : "" };
+  identityCache.set(accessToken, { identity, expires: Date.now() + IDENTITY_TTL_MS });
+  return identity;
+}
+
+/**
+ * The signed-in reviewer's identity, or null in self-hosted mode.
+ *
+ * Reads the ambient credential, so call it inside a scope opened by
+ * withPersistenceScope / withValyuBilling / runScoped — the same scopes that
+ * bind the billing token. Captures the credential synchronously before awaiting,
+ * so the ALS context is read while still bound.
+ */
+export async function currentIdentity(): Promise<ValyuIdentity | null> {
+  const credential = currentCredential();
+  if (!credential) return null;
+  return resolveIdentity(credential.accessToken);
+}
+
+/**
+ * Run a persistence route with the caller's identity resolvable.
+ *
+ * Sibling of withValyuBilling, for routes that read/write stored data rather
+ * than spend credits: it binds the token so currentIdentity() works, and in
+ * valyu mode refuses a request with no token — persistence there is per-user,
+ * so an anonymous caller has nothing to see and must sign in. Self-hosted has
+ * no users, so it proceeds unbound and every owner check resolves to the single
+ * global tenant.
+ */
+export async function withPersistenceScope(
+  req: Request,
+  handler: () => Promise<Response>,
+): Promise<Response> {
+  const token = bearerToken(req);
+  if (!token && !isSelfHostedMode()) {
+    return Response.json(
+      { error: "Sign in with Valyu to see your reviews.", requiresReauth: true },
+      { status: 401 },
+    );
+  }
+  return runScoped(token, handler);
+}
+
 /**
  * Options we actually pass to Valyu search, in the SDK's camelCase spelling.
  * Kept to the subset src/lib/valyu.ts uses — anything unused here would be a

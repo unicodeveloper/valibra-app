@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   asset_name   TEXT        NOT NULL,
   drug_name    TEXT        NOT NULL DEFAULT '',
   result       JSONB       NOT NULL,
+  -- Who owns this review, in valyu mode: the signed-in reviewer's OIDC subject
+  -- (and email, for the audit trail). NULL in self-hosted mode — that deployment
+  -- is a single tenant, so its rows are unowned and globally visible.
+  owner_sub    TEXT,
+  owner_email  TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -47,20 +52,40 @@ CREATE TABLE IF NOT EXISTS claims_library (
   confidence   REAL,
   evidence     JSONB       NOT NULL DEFAULT '[]',
   embedding    JSONB,      -- v2 semantic matching (OpenAI embedding vector)
+  -- Owner of this library entry, in valyu mode (NULL = self-hosted global).
+  -- Reuse is per-account: your paraphrase matches only your prior claims.
+  owner_sub    TEXT,
   -- provisional = the pipeline substantiated it, no human has looked yet.
   -- confirmed   = a reviewer accepted the substantiation finding.
   -- rejected    = a reviewer disagreed; never reused, never matched.
   status       TEXT        NOT NULL DEFAULT 'provisional'
                            CHECK (status IN ('provisional', 'confirmed', 'rejected')),
   reviewed_at  TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (drug_name, claim_text)
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+  -- Uniqueness is scoped by owner via a unique index below, not an inline
+  -- constraint — the same (drug, claim) may exist once per account.
 );
 CREATE INDEX IF NOT EXISTS idx_library_drug ON claims_library(drug_name);
 -- Upgrade existing installs that predate these columns.
 ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS embedding JSONB;
 ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'provisional';
 ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+-- Per-account scoping (additive columns; NULL on existing rows = self-hosted global).
+ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS owner_sub   TEXT;
+ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS owner_email TEXT;
+ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS owner_sub   TEXT;
+CREATE INDEX IF NOT EXISTS idx_reviews_owner ON reviews(owner_sub);
+CREATE INDEX IF NOT EXISTS idx_library_owner ON claims_library(owner_sub);
+
+-- Re-scope library uniqueness from (drug, claim) to (owner, drug, claim).
+-- Transforming, so guarded: drop the old unscoped constraint if it's still
+-- present, then create the owner-scoped unique index. COALESCE(owner_sub,'')
+-- keeps NULL owners (self-hosted) colliding as one tenant, since a plain unique
+-- index treats every NULL as distinct and would let duplicates through there.
+ALTER TABLE claims_library DROP CONSTRAINT IF EXISTS claims_library_drug_name_claim_text_key;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_library_owner_drug_claim
+  ON claims_library (COALESCE(owner_sub, ''), drug_name, claim_text);
 -- ADD COLUMN can't carry the CHECK on an upgrade, so attach it separately
 -- (Postgres has no ADD CONSTRAINT IF NOT EXISTS).
 DO $$

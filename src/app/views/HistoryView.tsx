@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
 
 interface ReviewSummary {
   id: string;
@@ -40,8 +41,10 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch("/api/reviews");
+      const r = await fetch("/api/reviews", { headers: await authorizedHeaders() });
       const data = await r.json();
+      // In valyu mode history is per-account; an expired session reopens sign-in.
+      if (handleAuthFailure(r.status, data)) return;
       if (!r.ok) throw new Error(data.error || "Could not load review history.");
       setReviews(data.reviews ?? []);
       setPersist(Boolean(data.persistenceEnabled));

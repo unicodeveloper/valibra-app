@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createDeepResearch, getDeepResearchStatus, DR_KINDS } from "@/lib/deepresearch";
 import { withValyuBilling, ValyuAuthError } from "@/lib/valyu-credentials";
+import { logServerError, publicErrorMessage } from "@/lib/api-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // create returns fast; the task runs async on Valyu
@@ -34,8 +35,11 @@ export async function POST(req: Request) {
       if (err instanceof ValyuAuthError) {
         return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
       }
-      const message = err instanceof Error ? err.message : "DeepResearch create failed.";
-      console.error("createDeepResearch failed:", err);
+      const message = publicErrorMessage(
+        err,
+        "DeepResearch create failed. Check the server logs for details.",
+      );
+      logServerError("createDeepResearch failed", err);
       return NextResponse.json({ error: message }, { status: 500 });
     }
   });
@@ -68,7 +72,10 @@ export async function GET(req: Request) {
       if (err instanceof ValyuAuthError) {
         return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
       }
-      const message = err instanceof Error ? err.message : "DeepResearch status failed.";
+      const message = publicErrorMessage(
+        err,
+        "DeepResearch status failed. Check the server logs for details.",
+      );
       return NextResponse.json({ error: message }, { status: 500 });
     }
   });

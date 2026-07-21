@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
 
 interface LibEntry {
   drug_name: string;
@@ -59,9 +60,11 @@ export function LibraryView() {
     try {
       const r = await fetch(
         `/api/library${filter ? `?drug=${encodeURIComponent(filter)}` : ""}`,
-        { signal: ctl.signal },
+        { signal: ctl.signal, headers: await authorizedHeaders() },
       );
       const data = await r.json();
+      // In valyu mode the library is per-account; an expired session reopens sign-in.
+      if (handleAuthFailure(r.status, data)) return;
       if (!r.ok) throw new Error(data.error || "Could not load the library.");
       setEntries(data.entries ?? []);
       setPersist(Boolean(data.persistenceEnabled));

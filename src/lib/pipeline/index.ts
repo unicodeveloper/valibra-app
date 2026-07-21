@@ -20,7 +20,7 @@ import { groundRegulatory } from "./regulatory";
 import { checkComparative } from "./comparative";
 import { checkIp, noveltyClaims } from "./ipCheck";
 import { checkMarketClaims, marketClaims } from "./marketClaim";
-import { listLibrary, type LibraryEntry } from "../db/client";
+import { listLibrary, type LibraryEntry, type Owner } from "../db/client";
 import { embed, cosineSim } from "../llm";
 import type { Claim } from "../schemas";
 
@@ -129,6 +129,10 @@ export async function runReview(
   assetText: string,
   assetName: string,
   markets: string[] = ["US"],
+  // Whose claims library this review may reuse — the signed-in reviewer in
+  // valyu mode, null (global) in self-hosted. Scopes the F16 read below so a
+  // "similar claim already substantiated" badge never sources another tenant.
+  owner: Owner = null,
   onProgress?: (entry: AuditEntry) => void,
 ): Promise<ReviewResult> {
   const reviewId = randomUUID();
@@ -161,7 +165,7 @@ export async function runReview(
     drugName ? valyu.getLabel(drugName) : Promise.resolve({ evidence: [], error: null }),
     drugName ? valyu.getAdverseEvents(drugName) : Promise.resolve({ evidence: [], error: null }),
     drugName ? valyu.getInteractions(drugName) : Promise.resolve({ evidence: [], error: null }),
-    drugName ? listLibrary(drugName).catch(() => []) : Promise.resolve([]), // F16 reuse
+    drugName ? listLibrary(drugName, owner).catch(() => []) : Promise.resolve([]), // F16 reuse
   ]);
   for (const e of [faersRes.error, interactionRes.error]) if (e) retrievalErrors.add(e);
 
