@@ -276,22 +276,10 @@ body {
   flex-shrink: 0;
 }
 .brand h1 {
-  font-size: var(--t-md);
+  font-size: var(--t-lg);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
   margin: 0;
-}
-/* The mark is a filled square with a cut corner: a page with its corner turned.
-   It reads at 16px, which the old ◆ glyph did not, and it is drawn rather than
-   typed so it doesn't shift with the font stack. */
-.brand .mark {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  align-self: center;
-  background: var(--accent);
-  clip-path: polygon(0 0, 68% 0, 100% 32%, 100% 100%, 0 100%);
-  border-radius: 2px;
 }
 .brand .by {
   font-size: var(--t-label);
@@ -800,49 +788,106 @@ code {
 
 /* Compose header.
 
-   Deliberately NOT a 40px hero sentence. This screen is the entry to a tool a
-   reviewer opens many times a day, not a landing page they see once — a giant
-   marketing headline greeting them on every edit reads as consumer-app splash,
-   not professional software. The register is a document editor's header: a
-   quiet accent eyebrow, a section-weight title, one factual line of what the
-   tool does. Presence comes from the type ramp and the accent tie to the brand
-   mark, not from size. */
-.compose {
-  margin: 20px 0 8px;
+   The first-run screen should feel decisive without turning into a marketing
+   splash. It gets display-level type, but the copy stays plain and task-shaped:
+   what gets checked, where the evidence comes from and what the reviewer does
+   with the result. */
+/* The compose landing is locked to one viewport: this wrapper fills the space
+   below the sticky masthead and centres the block, so an average laptop user
+   sees the hero, the form, every control and the full checklist without
+   scrolling. On phones (handled below) it releases and scrolls normally. */
+.wrap.compose-wrap {
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: calc(100dvh - 59px);
+  display: flex;
+  align-items: center;
 }
+.compose {
+  position: relative;
+  width: 100%;
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 22px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 59px);
+}
+/* A single soft field of light behind the hero — a low aurora plus a faint
+   engineering grid — so the first screen has depth instead of sitting flat on
+   the paper. It stays well behind the type and never touches the form. */
+.compose::before {
+  content: "";
+  position: absolute;
+  inset: -24px -8% auto -8%;
+  height: 320px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(52% 120% at 18% 0%, color-mix(in srgb, var(--accent-wash) 88%, transparent), transparent 60%),
+    radial-gradient(46% 90% at 92% 6%, color-mix(in srgb, var(--accent-wash) 44%, transparent), transparent 58%),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: auto, auto, 34px 34px, 34px 34px;
+  opacity: 0.5;
+  mask-image: radial-gradient(120% 100% at 40% 0%, #000 42%, transparent 82%);
+}
+
+/* The hero is its own full-width row above the two cards. */
 .compose-head {
+  flex: none;
   margin-bottom: 20px;
 }
-.compose-eyebrow {
-  font-size: var(--t-label);
-  font-weight: 650;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--accent-ink);
-  margin: 0 0 8px;
-}
 .compose-head h2 {
-  font-size: var(--t-lg);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-size: clamp(26px, 3vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
   color: var(--ink);
   margin: 0;
-  max-width: 34ch;
+  max-width: 20ch;
   text-wrap: balance;
 }
 .compose-lede {
-  font-size: var(--t-base);
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.5;
   color: var(--ink-2);
-  margin: 9px 0 0;
-  max-width: 62ch;
+  margin: 11px 0 0;
+  max-width: 88ch;
+}
+/* Factual trust row — the credibility of the tool stated plainly, in the same
+   restrained register as the rest of the app. No adjectives, just what is true. */
+.compose-trust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.compose-trust li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  padding: 4px 11px 4px 9px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.compose-trust li::before {
+  content: "✓";
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 /* Form fields — a real field wrapper instead of inline-height spacer divs, so
    the vertical rhythm is set once and the markup carries no layout literals. */
 .compose-form .field + .field {
-  margin-top: 16px;
+  margin-top: 14px;
 }
 .compose-actions {
   display: flex;
@@ -850,50 +895,201 @@ code {
   justify-content: space-between;
   gap: 12px 16px;
   flex-wrap: wrap;
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
-/* The passes — a reference list under a quiet heading, read once. Two columns
-   of hairline-separated rows, never a card grid: a card grid would turn a
-   reference into eight things competing for a click. */
+/* The two columns — form left, the checks it runs on the right — stretch to a
+   shared height that fills the available viewport (capped so a tall monitor
+   doesn't balloon the textarea into absurdity). `stretch` turns what would be a
+   short form beside a tall list into one balanced, scroll-free workbench. */
+.compose-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: 22px;
+  flex: 1;
+  min-height: 470px;
+}
+.compose-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--accent-wash)), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--sh-2);
+}
+.compose-form::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent);
+}
+/* The asset-text field absorbs the slack so the form matches the checklist's
+   height and the actions row stays pinned to the bottom of the card. */
+.compose-form .field:has(textarea) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.compose-form input[type="text"],
+.compose-form textarea {
+  background: color-mix(in srgb, var(--paper) 42%, var(--surface));
+  border-color: color-mix(in srgb, var(--line-strong) 82%, var(--accent-wash));
+}
+.compose-form textarea {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+}
+/* The primary action carries the whole first screen — give it real presence. */
+.compose-actions button:not(.ghost):not(.quiet):first-child {
+  font-weight: 650;
+  padding: 10px 20px;
+}
+@media (max-width: 900px) {
+  /* Release the viewport lock and let the page scroll normally when the columns
+     stack — a phone can't hold hero, form and eleven checks in one screen. */
+  .wrap.compose-wrap {
+    min-height: 0;
+    display: block;
+    padding: 24px 14px 64px;
+  }
+  .compose-body {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    min-height: 0;
+  }
+  .compose-form,
+  .compose-form .field:has(textarea) {
+    flex: 0 1 auto;
+  }
+  .compose-form textarea {
+    min-height: 260px;
+  }
+}
+
 .passes-section {
-  margin-top: 34px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--sunk) 52%, var(--surface)), var(--surface) 62%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-wash) 72%, transparent), transparent 42%);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--sh-1);
 }
 .passes-h {
   font-size: var(--t-label);
   font-weight: 650;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--ink-3);
-  margin: 0 0 2px;
+  color: var(--accent-ink);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
+.passes-h::after {
+  content: "11 checks";
+  font-family: var(--font-mono), monospace;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+/* Two columns of checks, not one long list: eleven items down a single column
+   is taller than a laptop viewport, so the checklist runs in a 2×6 grid and the
+   rows are centred in the panel. That keeps every check on screen while the rows
+   hold a natural, readable height instead of being stretched thin. */
 .passes {
+  counter-reset: pass;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
-  border-top: 1px solid var(--line);
-}
-@media (max-width: 720px) {
-  .passes {
-    grid-template-columns: 1fr;
-  }
+  align-content: center;
+  column-gap: 22px;
+  flex: 1;
+  min-height: 0;
 }
 .pass {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
+  counter-increment: pass;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-content: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  transition: padding-left 0.16s ease;
+}
+/* Clear the top border on the first row (both columns) so the grid starts clean. */
+.pass:nth-child(-n + 2) {
+  border-top: 0;
+}
+/* A quiet hover so the checklist reads as inspectable rather than static. */
+.pass:hover {
+  padding-left: 6px;
+}
+.pass:hover::before {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.pass::before {
+  content: counter(pass, decimal-leading-zero);
+  grid-row: 1 / span 2;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent-wash) 74%, var(--surface));
+  color: var(--accent-ink);
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  transition: background 0.16s ease, color 0.16s ease;
 }
 .pass-n {
+  grid-column: 2;
   font-size: var(--t-sm);
   font-weight: 650;
   color: var(--ink);
+  line-height: 1.25;
 }
 .pass-q {
+  grid-column: 2;
   font-size: var(--t-sm);
   color: var(--ink-3);
-  line-height: 1.45;
+  line-height: 1.34;
+  margin-top: 1px;
+}
+@media (max-width: 900px) {
+  .passes {
+    grid-template-columns: 1fr;
+    align-content: start;
+    flex: 0 1 auto;
+  }
+  .pass {
+    padding: 10px 0;
+  }
+  /* Back to a single column: only the very first item is borderless; the second,
+     which sat on the first grid row in the 2-col layout, needs its rule back. */
+  .pass:nth-child(2) {
+    border-top: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  }
 }
 
 /* ------------------------------------------------------- review layout -- */
@@ -1050,22 +1246,6 @@ code {
   padding: 22px 22px 18px;
   margin-bottom: 16px;
   overflow: hidden;
-}
-.verdict::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  background: var(--ink-3);
-}
-.verdict[data-sev="critical"]::before {
-  background: var(--crit);
-}
-.verdict[data-sev="warning"]::before {
-  background: var(--warn);
-}
-.verdict[data-sev="info"]::before {
-  background: var(--ok);
 }
 
 .verdict-top {
@@ -1249,45 +1429,39 @@ code {
    and a resolved note looked the same at arm's length. Severity now sets a left
    rail and the title weight; decided findings recede. Colour still isn't doing
    this alone — the glyph, the word and the claim number all still carry. */
+/* Finding — a "filed record", not a floating card.
+
+   The old treatment was the generic SaaS card: rounded rectangle, soft drop
+   shadow, floating on the paper. The design system's own rule is "paper doesn't
+   float", so this drops the shadow entirely. Identity comes from a colour-coded
+   severity SPINE down the left (like a file tab) and an asymmetric radius —
+   square on the spine edge, rounded on the outer edge — so it reads as a record
+   filed against a rail, not a card. State is carried by tint and a crisp
+   outline, never by elevation. */
 .finding {
   position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius);
-  margin-bottom: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
   scroll-margin-top: 90px;
-  transition: box-shadow 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
-}
-.finding[data-sev="critical"] {
-  border-left-color: var(--crit);
-  box-shadow: var(--sh-1);
+  transition: background 0.16s ease, border-color 0.16s ease;
 }
 .finding[data-sev="critical"] .f-title {
   font-size: var(--t-md);
   letter-spacing: -0.015em;
 }
-.finding[data-sev="warning"] {
-  border-left-color: var(--warn);
-}
-.finding[data-sev="info"] {
-  border-left-color: var(--ok);
-}
-.finding[data-sev="muted"] {
-  border-left-color: var(--line-strong);
-}
 .finding:hover {
   border-color: var(--line-strong);
 }
-.finding[data-sev="critical"]:hover {
-  border-left-color: var(--crit);
-}
 .finding[data-open="true"] {
-  box-shadow: var(--sh-2);
+  border-color: var(--line-strong);
 }
+/* Focused via keyboard/scroll-nav: a crisp accent outline, no blur glow. */
 .finding[data-active="true"] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-wash), var(--sh-2);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 .finding[data-decided="true"] {
   opacity: 0.62;
@@ -1308,7 +1482,6 @@ code {
   text-align: left;
   font: inherit;
   color: inherit;
-  border-radius: var(--radius);
 }
 .f-top:hover {
   filter: none;
@@ -1563,6 +1736,44 @@ code {
   font-size: 12px;
   line-height: 1.55;
   margin-top: 3px;
+}
+/* Source snippets are markdown (PubMed abstracts carry `## Discussion`,
+   `#### 3.2.3` section headings). Render them, but keep everything at snippet
+   scale — a heading becomes a small bold label, not a display heading. */
+.ev .snip :where(p, ul, ol) {
+  margin: 0 0 5px;
+}
+.ev .snip :where(p, ul, ol):last-child {
+  margin-bottom: 0;
+}
+.ev .snip :where(h1, h2, h3, h4, h5, h6) {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 7px 0 2px;
+  color: var(--ink);
+}
+.ev .snip :where(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+.ev .snip :where(ul, ol) {
+  padding-left: 16px;
+}
+.ev .snip :where(li) {
+  margin: 1px 0;
+}
+.ev .snip :where(strong) {
+  color: var(--ink);
+  font-weight: 650;
+}
+.ev .snip :where(a) {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: inherit;
+}
+.ev .snip :where(code) {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
 }
 
 /* decide */
@@ -2219,9 +2430,12 @@ td.claim-c {
   font-size: 11px;
   opacity: 0.75;
 }
+/* Opens upward: the "Load sample" button sits at the bottom of the form card,
+   near the bottom of the viewport, so a downward menu would be clipped. There is
+   ample room above it inside the tall form column. */
 .sample-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   z-index: 50;
   width: 320px;

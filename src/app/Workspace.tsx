@@ -270,9 +270,8 @@ export function Workspace({
       <header className="mast">
         <div className="mast-inner">
           <div className="brand">
-            <span className="mark" aria-hidden="true" />
             <h1>Valibra</h1>
-            <span className="by">Open MLR pre-check · powered by Valyu</span>
+            <span className="by">Open MLR · powered by Valyu</span>
           </div>
 
           <nav className="nav" role="tablist" aria-label="Workspace">

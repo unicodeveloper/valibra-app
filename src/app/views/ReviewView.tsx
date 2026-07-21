@@ -32,7 +32,7 @@ export function ReviewView({
   /** A past review pulled from history, with the decisions already made on it. */
   reopened?: { result: ReviewResult; decisions: Record<string, Decision> } | null;
 }) {
-  const [assetName, setAssetName] = useState("Sample asset");
+  const [assetName, setAssetName] = useState("Ozempic");
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
   const [markets, setMarkets] = useState<Market[]>(["US"]);
 
@@ -283,7 +283,7 @@ export function ReviewView({
 
   if (!result && !running) {
     return (
-      <div className="wrap narrow">
+      <div className="wrap compose-wrap">
         <Compose
           assetName={assetName}
           setAssetName={setAssetName}
@@ -624,20 +624,24 @@ function Compose({
 }) {
   return (
     <div className="compose">
-      {/* A tool header, not a splash: it names the screen and states in one line
-          what a run does, then gets out of the way of the form. The passes list
-          below is the reference for what "checked" means. */}
+      {/* The hero spans the full width on its own row; below it the form and the
+          checks it runs sit as two equal-size cards sharing one row and height. */}
       <header className="compose-head">
-        <p className="compose-eyebrow">New review</p>
         <h2>Check every claim against the evidence</h2>
         <p className="compose-lede">
           Valibra extracts each promotional claim and tests it against approved labelling, trial
           records and the peer-reviewed literature. Every finding cites its source, for you to
           accept or reject.
         </p>
+        <ul className="compose-trust">
+          <li>Grounded in licensed evidence</li>
+          <li>Every finding cites its source</li>
+          <li>Open source · MIT</li>
+        </ul>
       </header>
 
-      <div className="panel compose-form">
+      <div className="compose-body">
+      <div className="compose-form">
         <div className="field">
           <label htmlFor="asset-name">Asset name</label>
           <input
@@ -726,6 +730,7 @@ function Compose({
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

@@ -170,6 +170,34 @@ export function datasetLabel(id: string): string {
   return tail.replace(/^valyu-/, "").replace(/-/g, " ");
 }
 
+/**
+ * A human-showable snippet, or "" if there's nothing worth showing.
+ *
+ * Some datasets (ClinicalTrials especially) return a raw JSON record as the
+ * snippet. Dumping that blob under the link is crass — the linked title already
+ * names the study. So if the snippet is a JSON object, pull a genuine prose
+ * field out of it when one exists, otherwise show nothing. Real prose snippets
+ * (PubMed / Wiley abstracts) pass straight through.
+ */
+export function readableSnippet(raw: string): string {
+  const s = raw.trim();
+  if (!s) return "";
+  if (s[0] !== "{" && s[0] !== "[") return s;
+  try {
+    const obj = JSON.parse(s) as unknown;
+    const rec = Array.isArray(obj) ? obj[0] : obj;
+    if (rec && typeof rec === "object") {
+      for (const key of ["abstract", "brief_summary", "summary", "description", "detailed_description"]) {
+        const v = (rec as Record<string, unknown>)[key];
+        if (typeof v === "string" && v.trim()) return v.trim();
+      }
+    }
+    return ""; // structured record with no prose worth surfacing
+  } catch {
+    return ""; // looks like JSON but truncated/broken — never show a raw blob
+  }
+}
+
 /** Year from an ISO-ish date, for dating evidence at a glance. */
 export function yearOf(d: string | null): string | null {
   if (!d) return null;

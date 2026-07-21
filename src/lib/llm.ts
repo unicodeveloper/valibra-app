@@ -17,6 +17,19 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-5.6-terra";
 const REASONING_EFFORT = process.env.OPENAI_REASONING_EFFORT || "low";
 const EMBED_MODEL = process.env.OPENAI_EMBED_MODEL || "text-embedding-3-small";
 
+/**
+ * Appended to every structured system prompt. Any `rationale`/explanation the
+ * model writes lands verbatim in the reviewer's queue, so it must read like a
+ * human reviewer's note, not a model narrating its evidence. Harmless on the
+ * few passes (extraction, dossier) that emit no rationale.
+ */
+const RATIONALE_STYLE_NOTE =
+  "\n\nIf you write any rationale or explanation field, make it read like a terse MLR reviewer's " +
+  "note: one or two plain sentences that state the problem directly. Never open by narrating the " +
+  "evidence — do not start with 'The excerpts…', 'The evidence…', 'The label…', 'The data…', or " +
+  "'The provided/supplied/retrieved…'. Do not restate the claim, and avoid connectives like " +
+  "'Thus', 'Therefore', 'As such', 'It is important to note'. Active voice; lead with the finding.";
+
 let _client: OpenAI | null = null;
 function client(): OpenAI {
   if (!_client) {
@@ -47,7 +60,7 @@ export async function structured<T extends z.ZodTypeAny>(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...(effort && effort !== "off" ? { reasoning_effort: effort as any } : {}),
     messages: [
-      { role: "system", content: opts.system },
+      { role: "system", content: opts.system + RATIONALE_STYLE_NOTE },
       { role: "user", content: opts.user },
     ],
     response_format: zodResponseFormat(schema, opts.name),

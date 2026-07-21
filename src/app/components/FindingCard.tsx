@@ -7,6 +7,7 @@ import {
   SEV_GLYPH,
   SEV_WORD,
   datasetLabel,
+  readableSnippet,
   yearOf,
   type Decision,
 } from "../review-model";
@@ -123,6 +124,7 @@ export function FindingCard({
               </summary>
               {finding.evidence.map((e, i) => {
                 const yr = yearOf(e.publicationDate);
+                const snip = readableSnippet(e.snippet);
                 return (
                   <div className="ev" key={`${e.url}-${i}`}>
                     <div className="ev-top">
@@ -139,9 +141,13 @@ export function FindingCard({
                     ) : (
                       <span style={{ fontWeight: 600 }}>{e.title}</span>
                     )}
-                    <p className="snip">
-                      {e.snippet.length > 300 ? e.snippet.slice(0, 300).trimEnd() + "…" : e.snippet}
-                    </p>
+                    {snip && (
+                      <div className="snip">
+                        <Markdown>
+                          {snip.length > 300 ? snip.slice(0, 300).trimEnd() + "…" : snip}
+                        </Markdown>
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -5,6 +5,24 @@ import { z } from "zod";
  * through one of these — nothing untyped crosses from the model into the app.
  */
 
+/**
+ * Human-readable style for the `rationale` on any finding. These strings land
+ * in the reviewer's queue directly under a flagged claim, so they have to read
+ * like a reviewer's margin note — not like a model narrating its own evidence.
+ * Shared across every pass so the voice is consistent.
+ */
+export const RATIONALE_STYLE =
+  "one or two plain sentences, in the voice of an MLR reviewer's note. State the problem " +
+  "directly and name what is missing or what conflicts. Never open by narrating the evidence — " +
+  "do NOT start with 'The excerpts…', 'The evidence…', 'The label…', 'The data…', " +
+  "'The provided/supplied/retrieved…', or 'The excerpts establish…'. Do NOT restate the claim " +
+  "back, and drop throat-clearing connectives ('Thus', 'Therefore', 'As such', " +
+  "'It is important to note', 'It should be noted'). Active voice. Lead with the finding itself. " +
+  "Good: 'No head-to-head trial vs dulaglutide, so the superiority claim is unsupported.' " +
+  "Bad: 'The supplied label excerpts do not establish a superiority claim; thus it is unsubstantiated.'";
+
+const rationale = () => z.string().describe(`Why this finding — ${RATIONALE_STYLE}`);
+
 /** A discrete promotional/scientific claim extracted from an asset. */
 export const ClaimTypeSchema = z.enum([
   "efficacy",
@@ -71,7 +89,7 @@ export type Verdict = z.infer<typeof VerdictSchema>;
 export const VerificationSchema = z.object({
   verdict: VerdictSchema,
   confidence: z.number().describe("Calibrated confidence 0..1 in the verdict."),
-  rationale: z.string().describe("Why this verdict — cite the evidence, never guess."),
+  rationale: rationale(),
   citedPassage: z
     .string()
     .describe("The exact evidence passage that decides the verdict. '' if none."),
@@ -88,7 +106,7 @@ export const FairBalanceSchema = z.object({
   missingSafetyInfo: z
     .array(z.string())
     .describe("Required safety items (boxed warnings, contraindications, key ADRs) absent from the asset."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type FairBalance = z.infer<typeof FairBalanceSchema>;
 
@@ -99,7 +117,7 @@ export const OffLabelSchema = z.object({
   offLabelClaims: z
     .array(z.object({ claimId: z.string(), why: z.string() }))
     .describe("Claims that go beyond the approved indication/dosing."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type OffLabel = z.infer<typeof OffLabelSchema>;
 
@@ -109,7 +127,7 @@ export const AdverseEventCheckSchema = z.object({
   contradictions: z
     .array(z.object({ claimId: z.string(), signal: z.string(), why: z.string() }))
     .describe("Claims contradicted by post-market adverse-event signals."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type AdverseEventCheck = z.infer<typeof AdverseEventCheckSchema>;
 
@@ -121,7 +139,7 @@ export const SafetyOmissionSchema = z.object({
   omittedContraindications: z
     .array(z.string())
     .describe("Contraindications present in the label but absent from the asset."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type SafetyOmission = z.infer<typeof SafetyOmissionSchema>;
 
@@ -133,7 +151,7 @@ export const InteractionCheckSchema = z.object({
   notableInteractions: z
     .array(z.string())
     .describe("Clinically important interactions from the label relevant to the asset's use."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type InteractionCheck = z.infer<typeof InteractionCheckSchema>;
 
@@ -151,7 +169,7 @@ export const RegulatoryGroundingSchema = z.object({
       }),
     )
     .describe("Each concern tied to a specific rule or enforcement precedent."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type RegulatoryGrounding = z.infer<typeof RegulatoryGroundingSchema>;
 
@@ -169,7 +187,7 @@ export const ComparativeCheckSchema = z.object({
       }),
     )
     .describe("One entry per comparative/superiority claim."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type ComparativeCheck = z.infer<typeof ComparativeCheckSchema>;
 
@@ -184,7 +202,7 @@ export const IpCheckSchema = z.object({
       }),
     )
     .describe("One entry per novelty/first-in-class/IP claim."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type IpCheck = z.infer<typeof IpCheckSchema>;
 
@@ -199,7 +217,7 @@ export const MarketClaimSchema = z.object({
       }),
     )
     .describe("One entry per market-position/share claim."),
-  rationale: z.string(),
+  rationale: rationale(),
 });
 export type MarketClaim = z.infer<typeof MarketClaimSchema>;
 
