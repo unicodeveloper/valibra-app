@@ -2208,6 +2208,53 @@ td.claim-c {
   color: var(--crit);
 }
 
+/* Load-sample menu — the popover of demo assets under the compose panel's
+   "Load sample" button. Mirrors the account dropdown, opening upward-left. */
+.sample-slot {
+  position: relative;
+  display: inline-flex;
+}
+.sample-caret {
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.sample-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  width: 320px;
+  max-width: min(320px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--sh-3);
+  padding: 6px;
+  animation: slide-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sample-menu-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  text-align: left;
+}
+.sample-menu-drug {
+  font-weight: 650;
+  font-size: 13px;
+  color: var(--ink);
+}
+.sample-menu-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-3);
+  white-space: normal;
+}
+
 /* Modal. Overlay dims and blurs the desk; the dialog is a plain surface card,
    deliberately close in weight to the toast and panel it lives among. */
 .auth-overlay {

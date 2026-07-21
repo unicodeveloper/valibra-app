@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuditEntry, Finding, ReviewResult, Severity } from "@/lib/schemas";
 import { SAMPLE_ASSET } from "../sample-asset";
 import { AssetSheet } from "../components/AssetSheet";
+import { SampleMenu } from "../components/SampleMenu";
 import { FindingCard } from "../components/FindingCard";
 import { FindingsSkeleton, RunProgress, stageOf } from "../components/RunProgress";
 import {
@@ -664,9 +665,13 @@ function Compose({
             <button onClick={onRun} disabled={disabled || !assetText.trim()}>
               Run review
             </button>
-            <button className="ghost" onClick={() => setAssetText(SAMPLE_ASSET)} disabled={disabled}>
-              Load sample
-            </button>
+            <SampleMenu
+              onPick={(s) => {
+                setAssetText(s.text);
+                setAssetName(s.name);
+              }}
+              disabled={disabled}
+            />
           </div>
 
           <div className="row">
