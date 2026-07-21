@@ -1,5 +1,15 @@
-import type { Metadata } from "next";
 import { Workspace } from "../../Workspace";
+
+const DESCRIPTION =
+  "Open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence — every finding cited.";
+
+const SOCIAL_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "Valibra — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.",
+  type: "image/png",
+};
 
 /**
  * A saved review at its own URL.
@@ -10,9 +20,30 @@ import { Workspace } from "../../Workspace";
  * which fetches it on mount. Everything else — masthead, tabs, DeepResearch —
  * is the same shell as `/`.
  */
-export const metadata: Metadata = {
-  title: "Review — Valibra",
-};
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const reviewPath = `/review/${id}`;
+
+  return {
+    title: "Review",
+    alternates: { canonical: reviewPath },
+    openGraph: {
+      type: "website",
+      siteName: "Valibra",
+      title: "Valibra review",
+      description: DESCRIPTION,
+      url: reviewPath,
+      locale: "en_US",
+      images: [SOCIAL_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Valibra review",
+      description: DESCRIPTION,
+      images: [SOCIAL_IMAGE],
+    },
+  };
+}
 
 export default async function ReviewRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

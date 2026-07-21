@@ -3,4 +3,6 @@
  * reads these named exports from this file to emit <meta name="twitter:image">,
  * so there is one source of truth for the social card.
  */
-export { default, alt, size, contentType, runtime } from "./opengraph-image";
+export { default, alt, size, contentType } from "./opengraph-image";
+
+export const runtime = "nodejs";

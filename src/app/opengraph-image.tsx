@@ -40,7 +40,16 @@ function Chip({ label }: { label: string }) {
         color: INK_2,
       }}
     >
-      <div style={{ display: "flex", color: ACCENT, fontWeight: 700, marginRight: 10 }}>✓</div>
+      <div
+        style={{
+          display: "flex",
+          width: 9,
+          height: 9,
+          borderRadius: 999,
+          backgroundColor: ACCENT,
+          marginRight: 12,
+        }}
+      />
       {label}
     </div>
   );
