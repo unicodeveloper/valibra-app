@@ -29,10 +29,75 @@ const mono = IBM_Plex_Mono({
   display: "swap",
 });
 
+/**
+ * Absolute base for every metadata URL (og:image, twitter:image, canonical).
+ * Social crawlers need absolute URLs, so this must resolve to the deployed
+ * origin. It reads an explicit NEXT_PUBLIC_SITE_URL when set, otherwise reuses
+ * the origin of the OAuth redirect URI — which is already configured per
+ * deployment — and finally falls back to localhost for dev.
+ */
+const SITE_URL = (() => {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  try {
+    if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
+      return new URL(process.env.NEXT_PUBLIC_REDIRECT_URI).origin;
+    }
+  } catch {
+    /* malformed redirect URI — fall through to the dev default */
+  }
+  return "http://localhost:3000";
+})();
+
+const DESCRIPTION =
+  "Valibra is an open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) pre-check. It extracts every promotional claim and tests it against approved labelling, trial records and the peer-reviewed literature — and every finding cites its source, for a reviewer to accept or reject.";
+
+const SHORT_DESCRIPTION =
+  "Open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence — every finding cited.";
+
 export const metadata: Metadata = {
-  title: "Valibra — open MLR review",
-  description:
-    "Open-source, Valyu-grounded MLR pre-check. Every claim checked against real biomedical evidence.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Valibra — open MLR review",
+    template: "%s · Valibra",
+  },
+  description: DESCRIPTION,
+  applicationName: "Valibra",
+  authors: [{ name: "Valibra" }],
+  creator: "Valibra",
+  publisher: "Valibra",
+  category: "technology",
+  keywords: [
+    "MLR review",
+    "medical legal regulatory",
+    "pharma promotional review",
+    "claim substantiation",
+    "regulatory compliance",
+    "fair balance",
+    "off-label",
+    "pharmacovigilance",
+    "Valyu",
+    "biomedical evidence",
+    "open source",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Valibra",
+    title: "Valibra — open MLR review",
+    description: SHORT_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Valibra — open MLR review",
+    description: SHORT_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 /**
