@@ -21,7 +21,9 @@ import {
 } from "../review-model";
 import type { DrKind } from "../dr";
 import { authorizedHeaders, handleAuthFailure, useAuthStore } from "../stores/auth-store";
-import { isValyuMode } from "@/lib/app-mode";
+import { anonId } from "../anon-id";
+import { stashPendingReview, peekPendingReview, takePendingReview } from "../pending-review";
+import { track } from "../track";
 
 const MARKETS = ["US", "EU", "UK"] as const;
 type Market = (typeof MARKETS)[number];
@@ -63,6 +65,10 @@ export function ReviewView({
   const [doneStages, setDoneStages] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
+  // True while showing the pre-computed sample review — a full, cited result
+  // served statically so a first-time visitor sees the tool work instantly, with
+  // no run, no cost, and no account. The "see it work" tier of the free trial.
+  const [isSample, setIsSample] = useState(false);
   // Set when the server recognizes an identical recent asset, so the reviewer
   // can reopen the prior review instead of unknowingly re-spending credits.
   const [duplicate, setDuplicate] = useState<{
@@ -93,6 +99,50 @@ export function ReviewView({
   // them believe it was saved.
   const [unsaved, setUnsaved] = useState(0);
   const [persistOff, setPersistOff] = useState(false);
+
+  // Subscribed (not read imperatively) so the restore-on-sign-in effect fires the
+  // moment a conversion completes and the store flips authenticated.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  /** Persist a claimed free-run review into the now-signed-in account. */
+  const claimReview = useCallback(async (r: ReviewResult) => {
+    try {
+      const headers = await authorizedHeaders({ "Content-Type": "application/json" });
+      await fetch("/api/reviews/claim", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ result: r }),
+      });
+      track("review_claimed", { reviewId: r.reviewId });
+    } catch {
+      /* best-effort — the review still shows on screen even if the save fails */
+    }
+  }, []);
+
+  /**
+   * On sign-in, restore any work stashed at the wall — the typed asset, and the
+   * free review they ran — and claim that review into the new account so it
+   * becomes their first saved review. Runs once per conversion (the stash is
+   * consumed).
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const pending = takePendingReview();
+    if (!pending) return;
+    setAssetName(pending.assetName || "");
+    setAssetText(pending.assetText || "");
+    if (pending.markets?.length) setMarkets(pending.markets as Market[]);
+    if (pending.result) {
+      setIsSample(false);
+      setResult(pending.result);
+      setOpenIds(
+        new Set(
+          pending.result.findings.filter((f) => f.severity === "critical").map((f) => f.id),
+        ),
+      );
+      void claimReview(pending.result);
+    }
+  }, [isAuthenticated, claimReview]);
 
   /** Load a review pulled from history, decisions and all. */
   useEffect(() => {
@@ -137,12 +187,10 @@ export function ReviewView({
 
   const runReview = useCallback(
     async (force = false) => {
-    // In valyu mode a review bills the reviewer's own credits, so a signed-out
-    // click opens sign-in proactively rather than firing a request that 401s.
-    if (isValyuMode() && !useAuthStore.getState().isAuthenticated) {
-      useAuthStore.getState().openSignInModal();
-      return;
-    }
+    // No client-side auth gate: a first-time visitor is allowed to run one free
+    // review (the server meters it on the deployment key). The server decides —
+    // it either runs the trial or returns requiresSignup, which raises the wall
+    // below. This is what turns "sign in first" into "try it, then sign up".
 
     abortRef.current?.abort();
     const ac = new AbortController();
@@ -153,6 +201,7 @@ export function ReviewView({
     setDoneStages(new Set());
     setError(null);
     setResult(null);
+    setIsSample(false);
     setDuplicate(null);
     setDecisions({});
     setNotes({});
@@ -166,6 +215,8 @@ export function ReviewView({
       const headers = await authorizedHeaders({
         "Content-Type": "application/json",
         Accept: "text/event-stream",
+        // The free-trial meter (server ignores it for signed-in requests).
+        "x-anon-id": anonId(),
       });
       const res = await fetch("/api/review", {
         method: "POST",
@@ -176,6 +227,23 @@ export function ReviewView({
 
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({}));
+        // Free trial used up → the conversion wall (sign UP with framing), not a
+        // generic sign-in and not a sign-out. Preserve their work across the
+        // OAuth round-trip — keep any already-stashed free-run result, otherwise
+        // at least their typed asset.
+        if (data.requiresSignup) {
+          if (!peekPendingReview()?.result) {
+            stashPendingReview({ assetText, assetName, markets });
+          }
+          track("wall_shown", { reason: "run_limit" });
+          useAuthStore.getState().openSignInModal({
+            title: "You've seen it work",
+            lede:
+              data.error ||
+              "Connect your Valyu account to run more reviews and save your work.",
+          });
+          return;
+        }
         // An expired/absent session reopens sign-in rather than showing a raw error.
         if (handleAuthFailure(res.status, data)) {
           setError("Please sign in with Valyu to run a review.");
@@ -217,8 +285,44 @@ export function ReviewView({
       setResult(r);
       // Open the criticals by default — they're what the reviewer is here for.
       setOpenIds(new Set(r.findings.filter((f) => f.severity === "critical").map((f) => f.id)));
+      // A free (anonymous) run: stash it so a later sign-in can restore and claim
+      // it into the new account instead of losing it.
+      if (!useAuthStore.getState().isAuthenticated) {
+        stashPendingReview({ assetText, assetName, markets, result: r });
+        track("anon_run_completed", { findings: r.findings.length });
+      }
     }
   }, [assetText, assetName, markets]);
+
+  /**
+   * Load the pre-computed sample review — a full, cited result served statically
+   * (public/sample-review.json). Instant, no API run, no cost, no account: the
+   * "see it work" moment for a first-time visitor.
+   */
+  const loadSampleReview = useCallback(async () => {
+    try {
+      const r = await fetch("/sample-review.json");
+      if (!r.ok) return;
+      const result = (await r.json()) as ReviewResult;
+      track("sample_viewed");
+      abortRef.current?.abort();
+      setRunning(false);
+      setError(null);
+      setDuplicate(null);
+      setDecisions({});
+      setNotes({});
+      setActiveClaimId(null);
+      setIsSample(true);
+      setAssetName(result.assetName || "Sample review");
+      setAssetText(result.assetText ?? "");
+      setResult(result);
+      setOpenIds(
+        new Set(result.findings.filter((f) => f.severity === "critical").map((f) => f.id)),
+      );
+    } catch {
+      /* a missing sample just leaves the compose view as-is */
+    }
+  }, []);
 
   function cancel() {
     abortRef.current?.abort();
@@ -462,6 +566,7 @@ export function ReviewView({
           markets={markets}
           toggleMarket={toggleMarket}
           onRun={runReview}
+          onSeeSample={loadSampleReview}
           disabled={false}
           error={error}
           notice={
@@ -520,6 +625,7 @@ export function ReviewView({
               onClick={() => {
                 setResult(null);
                 setError(null);
+                setIsSample(false);
               }}
               disabled={running}
             >
@@ -564,6 +670,31 @@ export function ReviewView({
 
           {result && (
             <>
+              {isSample && (
+                <div className="banner info" role="status">
+                  <span aria-hidden="true">✦</span>
+                  <div>
+                    <p className="b-t">This is a sample review</p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      A real, fully-cited review of a sample asset — every finding below links to its
+                      source. Paste your own asset to run one free.
+                    </p>
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button
+                        className="sm"
+                        onClick={() => {
+                          setResult(null);
+                          setIsSample(false);
+                          setAssetText("");
+                          setAssetName("");
+                        }}
+                      >
+                        Review your own asset →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {result.retrievalHalt && (
                 <div className="banner crit" role="alert">
                   <span aria-hidden="true">▲</span>
@@ -827,6 +958,7 @@ function Compose({
   markets,
   toggleMarket,
   onRun,
+  onSeeSample,
   disabled,
   error,
   notice,
@@ -838,6 +970,7 @@ function Compose({
   markets: Market[];
   toggleMarket: (m: Market) => void;
   onRun: () => void;
+  onSeeSample: () => void;
   disabled: boolean;
   error: string | null;
   /** Optional bar shown above the form (e.g. the duplicate-review notice). */
@@ -859,6 +992,10 @@ function Compose({
           <li>Every finding cites its source</li>
           <li>Open source · MIT</li>
         </ul>
+        <button type="button" className="see-sample" onClick={onSeeSample}>
+          See a completed review — no sign-up
+          <span aria-hidden="true"> →</span>
+        </button>
       </header>
 
       {notice && <div className="compose-notice">{notice}</div>}

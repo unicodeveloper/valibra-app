@@ -46,6 +46,9 @@ interface AuthState {
   isLoading: boolean;
   initialized: boolean;
   showSignInModal: boolean;
+  /** Optional conversion framing for the sign-in dialog — set when the modal is
+   *  the free-trial wall rather than a plain sign-in. Null = default copy. */
+  signInPrompt: { title: string; lede: string } | null;
   signIn: (
     user: User,
     tokens: { accessToken: string; refreshToken?: string; expiresIn?: number },
@@ -54,7 +57,7 @@ interface AuthState {
   initialize: () => void;
   getAccessToken: () => string | null;
   refreshAccessToken: () => Promise<string | null>;
-  openSignInModal: () => void;
+  openSignInModal: (prompt?: { title: string; lede: string }) => void;
   closeSignInModal: () => void;
 }
 
@@ -126,6 +129,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isLoading: true,
   initialized: false,
   showSignInModal: false,
+  signInPrompt: null,
 
   /**
    * Rehydrate from localStorage. Called once from AuthInitializer, in an
@@ -296,8 +300,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  openSignInModal: () => set({ showSignInModal: true }),
-  closeSignInModal: () => set({ showSignInModal: false }),
+  openSignInModal: (prompt) => set({ showSignInModal: true, signInPrompt: prompt ?? null }),
+  closeSignInModal: () => set({ showSignInModal: false, signInPrompt: null }),
 }));
 
 /**

@@ -19,6 +19,7 @@ import { initiateOAuthFlow, isOAuthConfigured } from "@/lib/oauth";
 export function SignInModal() {
   const open = useAuthStore((s) => s.showSignInModal);
   const close = useAuthStore((s) => s.closeSignInModal);
+  const prompt = useAuthStore((s) => s.signInPrompt);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,12 +96,12 @@ export function SignInModal() {
 
         <div className="auth-modal-head">
           <span className="mark" aria-hidden="true" />
-          <h2 id="auth-modal-title">Sign in with Valyu</h2>
+          <h2 id="auth-modal-title">{prompt?.title ?? "Sign in with Valyu"}</h2>
         </div>
 
         <p className="auth-modal-lede">
-          Valibra checks every claim against real biomedical evidence through Valyu. 
-          
+          {prompt?.lede ??
+            "Valibra checks every claim against real biomedical evidence through Valyu."}
         </p>
 
         {error && (
