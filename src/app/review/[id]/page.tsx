@@ -47,5 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ReviewRoute({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <Workspace initialReviewId={id} initialView="review" />;
+  // Keyed by id so switching between saved reviews (and to/from home) remounts
+  // the shell on the right review instead of reconciling into a stale one.
+  return <Workspace key={id} initialReviewId={id} initialView="review" />;
 }

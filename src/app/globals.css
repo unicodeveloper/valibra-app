@@ -281,6 +281,15 @@ body {
   letter-spacing: -0.01em;
   margin: 0;
 }
+/* The wordmark returns to the workspace home — inherits the h1 look, with a
+   quiet hover so it reads as clickable. */
+.brand-home {
+  color: inherit;
+  text-decoration: none;
+}
+.brand-home:hover {
+  color: var(--accent);
+}
 .brand .by {
   font-size: var(--t-label);
   color: var(--ink-3);

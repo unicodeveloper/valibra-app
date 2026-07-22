@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ReviewView } from "./views/ReviewView";
 import { DossierView } from "./views/DossierView";
 import { LibraryView } from "./views/LibraryView";
@@ -272,7 +273,11 @@ export function Workspace({
       <header className="mast">
         <div className="mast-inner">
           <div className="brand">
-            <h1>Valibra</h1>
+            <h1>
+              <Link href="/" className="brand-home" onClick={() => setView("review")}>
+                Valibra
+              </Link>
+            </h1>
             <span className="by">Open MLR · powered by Valyu</span>
           </div>
 
