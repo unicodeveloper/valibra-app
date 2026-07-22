@@ -99,21 +99,33 @@ export function ReviewView({
   // them believe it was saved.
   const [unsaved, setUnsaved] = useState(0);
   const [persistOff, setPersistOff] = useState(false);
+  // Set when a free review is claimed into a new account on sign-in — the payoff
+  // the conversion wall promised. Auto-dismisses.
+  const [claimed, setClaimed] = useState(false);
 
   // Subscribed (not read imperatively) so the restore-on-sign-in effect fires the
   // moment a conversion completes and the store flips authenticated.
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
+  useEffect(() => {
+    if (!claimed) return;
+    const t = setTimeout(() => setClaimed(false), 6000);
+    return () => clearTimeout(t);
+  }, [claimed]);
+
   /** Persist a claimed free-run review into the now-signed-in account. */
   const claimReview = useCallback(async (r: ReviewResult) => {
     try {
       const headers = await authorizedHeaders({ "Content-Type": "application/json" });
-      await fetch("/api/reviews/claim", {
+      const resp = await fetch("/api/reviews/claim", {
         method: "POST",
         headers,
         body: JSON.stringify({ result: r }),
       });
-      track("review_claimed", { reviewId: r.reviewId });
+      if (resp.ok) {
+        track("review_claimed", { reviewId: r.reviewId });
+        setClaimed(true); // deliver the "saved to your library" payoff
+      }
     } catch {
       /* best-effort — the review still shows on screen even if the save fails */
     }
@@ -208,6 +220,7 @@ export function ReviewView({
     setOpenIds(new Set());
     setActiveClaimId(null);
     setUnsaved(0);
+    setClaimed(false);
 
     try {
       // In valyu mode this attaches the reviewer's token so the run bills their
@@ -703,6 +716,17 @@ export function ReviewView({
 
           {result && (
             <>
+              {claimed && (
+                <div className="banner ok" role="status">
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <p className="b-t">Saved to your library</p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Your review is in your account — reopen it any time from History.
+                    </p>
+                  </div>
+                </div>
+              )}
               {isSample && (
                 <div className="banner info" role="status">
                   <span aria-hidden="true">✦</span>

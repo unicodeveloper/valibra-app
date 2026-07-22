@@ -1977,6 +1977,13 @@ code {
 .banner.info .b-t {
   color: var(--accent-ink);
 }
+.banner.ok {
+  background: var(--ok-wash);
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+}
+.banner.ok .b-t {
+  color: var(--ok);
+}
 .banner .b-t {
   font-weight: 700;
   margin: 0 0 3px;
