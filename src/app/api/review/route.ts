@@ -6,6 +6,7 @@ import {
   saveToLibrary,
   assetHash,
   findRecentByHash,
+  recordAnonRun,
   type Owner,
 } from "@/lib/db/client";
 import {
@@ -15,8 +16,20 @@ import {
   currentIdentity,
   ValyuAuthError,
 } from "@/lib/valyu-credentials";
+import { isSelfHostedMode } from "@/lib/app-mode";
+import {
+  trialAvailable,
+  anonFingerprint,
+  clientIp,
+  checkAnonQuota,
+  refusalMessage,
+} from "@/lib/anon-trial";
 import { logServerError, publicErrorMessage } from "@/lib/api-errors";
 import type { AuditEntry, ReviewResult } from "@/lib/schemas";
+
+/** An anonymous free-trial run: who to meter it against. Null for signed-in /
+ *  self-hosted runs. */
+type Anon = { fingerprint: string | null; ip: string } | null;
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // substantiation fans out across many Valyu calls
@@ -66,36 +79,74 @@ export async function POST(req: Request) {
   // it survives into the streaming path's deferred callback. See runScoped.
   const token = bearerToken(req);
 
-  // Refuse before any Valyu spend if this request can't pay — valyu mode
-  // without a token, or self-hosted without a key.
-  const ready = runScoped(token, retrievalReadiness);
-  if (!ready.ok) {
-    return NextResponse.json(
-      ready.status === 401 ? { error: ready.error, requiresReauth: true } : { error: ready.error },
-      { status: ready.status },
-    );
-  }
+  // Authorize + decide who pays. Three ways a run is allowed:
+  //   signed-in  → billed to the reviewer's Valyu credits (owner resolved);
+  //   self-hosted→ billed to the deployment key (no accounts);
+  //   anon trial → valyu mode, no token: the deployment key funds up to a few
+  //                free reviews to convert a first-time visitor, metered so it
+  //                can't be abused. Anything else refuses before any spend.
+  let owner: Owner = null;
+  let anon: Anon = null;
 
-  // Resolve the owner up front: it scopes persistence + F16 reuse, and the
-  // dedup check below needs it too. A dead token surfaces here as a reauth.
-  let owner: Owner;
-  try {
-    owner = await runScoped(token, currentIdentity);
-  } catch (err) {
-    if (err instanceof ValyuAuthError) {
-      return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+  if (token || isSelfHostedMode()) {
+    const ready = runScoped(token, retrievalReadiness);
+    if (!ready.ok) {
+      return NextResponse.json(
+        ready.status === 401
+          ? { error: ready.error, requiresReauth: true }
+          : { error: ready.error },
+        { status: ready.status },
+      );
     }
-    const message = publicErrorMessage(err, "Review failed. Check the server logs for details.");
-    logServerError("identity resolution failed", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Resolve the signed-in owner (self-hosted resolves to null). A dead token
+    // surfaces here as a reauth.
+    try {
+      owner = await runScoped(token, currentIdentity);
+    } catch (err) {
+      if (err instanceof ValyuAuthError) {
+        return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+      }
+      const message = publicErrorMessage(err, "Review failed. Check the server logs for details.");
+      logServerError("identity resolution failed", err);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  } else {
+    // Valyu mode, no token → free-trial path, or fall back to "please sign in".
+    if (!trialAvailable()) {
+      return NextResponse.json(
+        {
+          error: "Sign in with Valyu to run a review — it uses your own Valyu credits.",
+          requiresReauth: true,
+        },
+        { status: 401 },
+      );
+    }
+    const fingerprint = anonFingerprint(req);
+    const ip = clientIp(req);
+    const q = await checkAnonQuota(fingerprint, ip);
+    if (!q.ok) {
+      // The wall. `requiresSignup` (not `requiresReauth`) tells the client to
+      // show a sign-UP prompt rather than a "session expired" one.
+      return NextResponse.json(
+        { error: refusalMessage(q.reason), requiresSignup: true },
+        { status: 401 },
+      );
+    }
+    anon = { fingerprint, ip };
+    // Reserve the free run BEFORE any spend. Recording it after the run (which
+    // takes tens of seconds) leaves a wide window where concurrent requests all
+    // pass the quota check and blow past the caps — draining the deployment key.
+    // Reserving up front shrinks that race to the check→insert gap; a run that
+    // then fails "costs" the slot, which is the right trade for cost safety.
+    await recordAnonRun(fingerprint, ip);
   }
 
   // Don't silently re-spend on an identical asset the owner already reviewed
   // recently — hand the client a duplicate signal so it can offer to reopen the
-  // prior review instead. Bypassed by an explicit "Re-run anyway" (force) and
-  // when persistence is off (nothing to dedup against).
+  // prior review instead. Skipped for anon runs (they keep no history) and on an
+  // explicit "Re-run anyway" (force).
   const hash = assetHash(assetText, markets);
-  if (process.env.DATABASE_URL && !force) {
+  if (!anon && process.env.DATABASE_URL && !force) {
     const previous = await findRecentByHash(owner, hash, RERUN_WINDOW_HOURS);
     if (previous) {
       return NextResponse.json({ duplicate: true, previous });
@@ -105,12 +156,13 @@ export async function POST(req: Request) {
   // Clients that ask for a stream get the audit trail live as the pipeline
   // walks it; everyone else gets the same single JSON payload as before.
   if (req.headers.get("accept")?.includes("text/event-stream")) {
-    return streamReview(assetText, assetName, markets, token, owner, hash);
+    return streamReview(assetText, assetName, markets, token, owner, hash, anon);
   }
 
   try {
     const result = await runScoped(token, () => runReview(assetText, assetName, markets, owner));
-    persist(result, owner, hash);
+    // Anon runs are ephemeral — the metering row was already reserved up front.
+    if (!anon) persist(result, owner, hash);
     return NextResponse.json(result);
   } catch (err) {
     // A dead token mid-review is a reauth prompt, not a generic 500.
@@ -130,6 +182,7 @@ function streamReview(
   token: string | null,
   owner: Owner,
   hash: string,
+  anon: Anon,
 ) {
   const encoder = new TextEncoder();
 
@@ -154,7 +207,8 @@ function streamReview(
             send("stage", entry),
           ),
         );
-        persist(result, owner, hash);
+        // Anon runs are ephemeral — the metering row was already reserved up front.
+        if (!anon) persist(result, owner, hash);
         send("done", result);
       } catch (err) {
         const message =

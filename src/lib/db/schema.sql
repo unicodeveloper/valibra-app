@@ -125,6 +125,20 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
+-- Free-trial metering (valyu mode): one row per ANONYMOUS review run, so the
+-- deployment can cap free runs per visitor (fingerprint) and per network (ip),
+-- and enforce a global daily budget so a spike can't drain the app key. Anon
+-- reviews are otherwise ephemeral — this table is the only trace they leave.
+CREATE TABLE IF NOT EXISTS anon_runs (
+  id          BIGSERIAL PRIMARY KEY,
+  fingerprint TEXT,
+  ip          TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_anon_runs_fp ON anon_runs(fingerprint);
+CREATE INDEX IF NOT EXISTS idx_anon_runs_ip ON anon_runs(ip, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_anon_runs_created ON anon_runs(created_at DESC);
+
 -- ============================================================================
 -- Migration patterns
 --
