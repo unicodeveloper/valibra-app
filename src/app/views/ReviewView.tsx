@@ -22,6 +22,7 @@ import {
 import type { DrKind } from "../dr";
 import { authorizedHeaders, handleAuthFailure, useAuthStore } from "../stores/auth-store";
 import { anonId } from "../anon-id";
+import { isValyuMode } from "@/lib/app-mode";
 import { stashPendingReview, peekPendingReview, takePendingReview } from "../pending-review";
 import { track } from "../track";
 
@@ -747,6 +748,34 @@ export function ReviewView({
                         }}
                       >
                         Review your own asset →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* A free-run result for an anonymous reviewer: name the moment
+                  softly so the sign-up wall on their next action isn't a cold
+                  surprise, and offer the path proactively. Valyu mode only —
+                  self-hosted has no accounts to sign into. */}
+              {!isSample && !isAuthenticated && isValyuMode() && (
+                <div className="banner info" role="status">
+                  <span aria-hidden="true">✦</span>
+                  <div>
+                    <p className="b-t">That was your free review</p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Sign in with Valyu to save it to your library and run more.
+                    </p>
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button
+                        className="sm"
+                        onClick={() =>
+                          useAuthStore.getState().openSignInModal({
+                            title: "Save your review",
+                            lede: "Connect your Valyu account to run more reviews and save your work.",
+                          })
+                        }
+                      >
+                        Sign in with Valyu
                       </button>
                     </div>
                   </div>
