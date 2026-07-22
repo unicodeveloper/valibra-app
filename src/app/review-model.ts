@@ -5,7 +5,17 @@ import type { Claim, Finding, ReviewResult, Severity } from "@/lib/schemas";
  * the findings list address each other.
  */
 
-export type Decision = "accepted" | "rejected" | null;
+export type Decision = "accepted" | "rejected" | "revision" | null;
+
+/**
+ * The reasoning attached to a decision — why, and (for a revision request) the
+ * proposed replacement copy. This is the payload the content team acts on, so
+ * it's what turns a review into an actionable revision request.
+ */
+export interface DecisionNote {
+  rationale?: string;
+  suggestedRevision?: string;
+}
 
 /** Severity, ordered by how much it should interrupt a reviewer. */
 const SEV_RANK: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };

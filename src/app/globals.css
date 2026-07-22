@@ -1808,6 +1808,98 @@ code {
   border-color: var(--crit);
   color: var(--on-sev);
 }
+.decide button.on-e {
+  background: var(--warn);
+  border-color: var(--warn);
+  color: var(--on-sev);
+}
+.tag.dec-revision {
+  background: var(--warn-wash);
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+}
+
+/* Inline annotation area: the reason + suggested revision under a finding, the
+   payload that turns a decision into an actionable change request. */
+.annot {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.annot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.annot-head label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.annot-hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  background: var(--accent-wash);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+.annot-text,
+.annot-reason {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.annot-text {
+  resize: vertical;
+  min-height: 44px;
+}
+/* Field + its save-status affordance, so the reviewer can see whether their
+   typed reason/revision is recorded or still pending. */
+.annot-field {
+  position: relative;
+}
+.annot-status {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 5px;
+  pointer-events: none;
+  background: var(--surface);
+}
+.annot-status.saved {
+  color: var(--ok);
+}
+.annot-status.dirty {
+  color: var(--ink-3);
+}
+.annot .xs {
+  font-size: 11.5px;
+  padding: 3px 8px;
+}
+.annot .link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
 
 /* ------------------------------------------------------------ states -- */
 

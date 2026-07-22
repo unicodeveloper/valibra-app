@@ -7,12 +7,16 @@ export const runtime = "nodejs";
 
 const RequestSchema = z.object({
   findingId: z.string().min(1, "findingId is required"),
-  // "cleared" is a real decision, not an absence: a reviewer un-deciding a
-  // finding is recorded, never erased.
-  decision: z.enum(["accepted", "rejected", "cleared"]),
+  // "revision" = approve-with-changes; "cleared" is a real decision, not an
+  // absence — a reviewer un-deciding a finding is recorded, never erased.
+  decision: z.enum(["accepted", "rejected", "revision", "cleared"]),
   // Advisory only: in valyu mode the server overrides this with the
   // authenticated email, so the audit trail names a verified identity.
   reviewer: z.string().max(200).default(""),
+  // Why (reject/revision) and the proposed replacement copy (revision). Bounded
+  // so a pasted asset can't be stuffed into a decision row.
+  rationale: z.string().max(4000).optional(),
+  suggestedRevision: z.string().max(8000).optional(),
 });
 
 /** Current decision per finding, for rehydrating a reopened review. Scoped to
@@ -59,11 +63,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ persisted: false, reason: "persistence_disabled" });
   }
 
-  const { findingId, decision, reviewer } = parsed.data;
+  const { findingId, decision, reviewer, rationale, suggestedRevision } = parsed.data;
   return withPersistenceScope(req, async () => {
     try {
       const owner = await currentIdentity();
-      const out = await recordDecision(id, findingId, decision, reviewer, owner);
+      const out = await recordDecision(id, findingId, decision, reviewer, owner, {
+        rationale,
+        suggestedRevision,
+      });
       return NextResponse.json(out);
     } catch (err) {
       if (err instanceof ValyuAuthError) {

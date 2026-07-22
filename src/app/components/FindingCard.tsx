@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Markdown } from "./Markdown";
 import type { Finding } from "@/lib/schemas";
 import {
@@ -10,31 +11,79 @@ import {
   readableSnippet,
   yearOf,
   type Decision,
+  type DecisionNote,
 } from "../review-model";
+
+/** What the /api/suggest-revision endpoint returns. */
+export interface RevisionDraft {
+  kind: "rewrite" | "instruction" | "abstain";
+  text: string;
+}
 
 export function FindingCard({
   finding,
   claimIndex,
   decision,
+  note,
   open,
   active,
   unchecked,
   onToggle,
   onDecide,
+  onNote,
+  onDraftRevision,
   onFocusClaim,
 }: {
   finding: Finding;
   claimIndex: number | null;
   decision: Decision;
+  note: DecisionNote;
   open: boolean;
   active: boolean;
   unchecked: boolean;
   onToggle: () => void;
   onDecide: (d: Decision) => void;
+  onNote: (note: DecisionNote) => void;
+  onDraftRevision: () => Promise<RevisionDraft | null>;
   onFocusClaim: () => void;
 }) {
   const sev = finding.severity;
   const conf = finding.confidence;
+
+  // Local mirrors of the note fields so typing is smooth; persisted to the
+  // parent (and server) on blur, not per keystroke. Re-seeded when the note
+  // changes underneath us — reopening a review, or an accepted AI draft.
+  const [revision, setRevision] = useState(note.suggestedRevision ?? "");
+  const [reason, setReason] = useState(note.rationale ?? "");
+  const [draft, setDraft] = useState<RevisionDraft | null>(null);
+  const [drafting, setDrafting] = useState(false);
+
+  useEffect(() => setRevision(note.suggestedRevision ?? ""), [note.suggestedRevision]);
+  useEffect(() => setReason(note.rationale ?? ""), [note.rationale]);
+
+  const commit = (next: Partial<DecisionNote>) =>
+    onNote({ rationale: reason, suggestedRevision: revision, ...next });
+
+  // "Dirty" = the field has edits the reviewer hasn't saved yet. Saving happens
+  // on blur and on Enter; the status line below each field tells the reviewer
+  // which state they're in, so a typed reason never silently fails to record.
+  const reasonDirty = reason !== (note.rationale ?? "");
+  const revisionDirty = revision !== (note.suggestedRevision ?? "");
+  const commitReason = () => {
+    if (reasonDirty) commit({ rationale: reason });
+  };
+  const commitRevision = () => {
+    if (revisionDirty) commit({ suggestedRevision: revision });
+  };
+
+  async function draftRevision() {
+    setDrafting(true);
+    try {
+      setDraft(await onDraftRevision());
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   return (
     <article
@@ -159,22 +208,144 @@ export function FindingCard({
               className={`sm ${decision === "accepted" ? "on-a" : "ghost"}`}
               onClick={() => onDecide(decision === "accepted" ? null : "accepted")}
               aria-pressed={decision === "accepted"}
+              title="Approve this claim as written  ·  shortcut A"
             >
               Accept
+            </button>
+            <button
+              className={`sm ${decision === "revision" ? "on-e" : "ghost"}`}
+              onClick={() => onDecide(decision === "revision" ? null : "revision")}
+              aria-pressed={decision === "revision"}
+              title="Approve with changes — add a suggested revision for the content team  ·  shortcut E"
+            >
+              Request revision
             </button>
             <button
               className={`sm ${decision === "rejected" ? "on-r" : "ghost"}`}
               onClick={() => onDecide(decision === "rejected" ? null : "rejected")}
               aria-pressed={decision === "rejected"}
+              title="Flag this claim to be removed — add the reason  ·  shortcut R"
             >
               Reject
             </button>
             <span className="hint" style={{ marginLeft: "auto" }}>
-              <kbd>A</kbd> accept · <kbd>R</kbd> reject
+              <kbd>A</kbd> accept · <kbd>E</kbd> revise · <kbd>R</kbd> reject
             </span>
           </div>
+
+          {/* Revision request: the proposed replacement copy + an optional
+              reason. Draft is grounded and advisory — the reviewer owns the
+              final text. */}
+          {decision === "revision" && (
+            <div className="annot">
+              <div className="annot-head">
+                <label htmlFor={`rev-${finding.id}`}>Suggested revision</label>
+                <button className="quiet xs" onClick={draftRevision} disabled={drafting}>
+                  {drafting ? "Drafting…" : "✦ Draft from evidence"}
+                </button>
+              </div>
+
+              {draft && draft.kind !== "rewrite" && (
+                <p className="annot-hint">
+                  {draft.kind === "abstain" ? "No grounded rewrite: " : "Suggested fix: "}
+                  {draft.text}
+                </p>
+              )}
+              {draft && draft.kind === "rewrite" && revision !== draft.text && (
+                <p className="annot-hint">
+                  Suggested: “{draft.text}”{" "}
+                  <button
+                    className="link xs"
+                    onClick={() => {
+                      setRevision(draft.text);
+                      commit({ suggestedRevision: draft.text });
+                    }}
+                  >
+                    Use this
+                  </button>
+                </p>
+              )}
+
+              <div className="annot-field">
+                <textarea
+                  id={`rev-${finding.id}`}
+                  className="annot-text"
+                  value={revision}
+                  onChange={(e) => setRevision(e.target.value)}
+                  onBlur={commitRevision}
+                  onKeyDown={(e) => {
+                    // ⌘/Ctrl+Enter saves; plain Enter keeps adding lines.
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      commitRevision();
+                    }
+                  }}
+                  placeholder="What should this claim say instead? (compliant, evidence-supported copy)"
+                  rows={2}
+                />
+                <SaveStatus dirty={revisionDirty} filled={revision.trim() !== ""} enterHint="⌘↵" />
+              </div>
+              <div className="annot-field">
+                <input
+                  className="annot-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  onBlur={commitReason}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitReason();
+                    }
+                  }}
+                  placeholder="Reason for the change (optional)"
+                />
+                <SaveStatus dirty={reasonDirty} filled={reason.trim() !== ""} enterHint="↵" />
+              </div>
+            </div>
+          )}
+
+          {decision === "rejected" && (
+            <div className="annot">
+              <div className="annot-field">
+                <input
+                  className="annot-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  onBlur={commitReason}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitReason();
+                    }
+                  }}
+                  placeholder="Why is this claim rejected? (tells the content team what to remove and why)"
+                />
+                <SaveStatus dirty={reasonDirty} filled={reason.trim() !== ""} enterHint="↵" />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </article>
+  );
+}
+
+/** Tells the reviewer whether a note field's text is saved or has pending edits,
+ *  so a typed reason never silently fails to record. Hidden when the field is
+ *  empty (nothing to save). */
+function SaveStatus({
+  dirty,
+  filled,
+  enterHint,
+}: {
+  dirty: boolean;
+  filled: boolean;
+  enterHint: string;
+}) {
+  if (!filled) return null;
+  return (
+    <span className={`annot-status ${dirty ? "dirty" : "saved"}`} aria-live="polite">
+      {dirty ? `${enterHint} to save` : "✓ Saved"}
+    </span>
   );
 }

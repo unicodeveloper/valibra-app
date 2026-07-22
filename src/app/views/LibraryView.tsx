@@ -201,7 +201,9 @@ export function LibraryView() {
                 <th>Type</th>
                 <th>Verdict</th>
                 <th>Status</th>
-                <th className="num">Conf</th>
+                <th className="num" title="Confidence in the substantiation verdict (0–100%)">
+                  Confidence
+                </th>
               </tr>
             </thead>
             <tbody>

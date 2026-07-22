@@ -38,11 +38,33 @@ CREATE TABLE IF NOT EXISTS finding_decisions (
   id          BIGSERIAL PRIMARY KEY,
   review_id   UUID        NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
   finding_id  TEXT        NOT NULL,
-  decision    TEXT        NOT NULL CHECK (decision IN ('accepted', 'rejected', 'cleared')),
+  -- 'revision' = approve with changes: the reviewer requests a specific edit
+  -- (suggested_revision) rather than an outright accept or reject. Mirrors the
+  -- real MLR approve / request-revision / reject model.
+  decision    TEXT        NOT NULL CHECK (decision IN ('accepted', 'rejected', 'revision', 'cleared')),
   reviewer    TEXT        NOT NULL DEFAULT '',
+  -- Why the decision was made (reject/revision) and, for a revision, the
+  -- proposed replacement copy — this is what closes the MLR loop for the
+  -- content team. Nullable: an accept usually needs neither.
+  rationale          TEXT,
+  suggested_revision TEXT,
   decided_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_review ON finding_decisions(review_id, decided_at DESC);
+
+-- Upgrade existing installs: add the columns, then widen the decision CHECK to
+-- allow 'revision'. Transforming, so guarded — drop the old constraint if present
+-- and re-add the widened one (Postgres has no ADD CONSTRAINT IF NOT EXISTS).
+ALTER TABLE finding_decisions ADD COLUMN IF NOT EXISTS rationale          TEXT;
+ALTER TABLE finding_decisions ADD COLUMN IF NOT EXISTS suggested_revision TEXT;
+ALTER TABLE finding_decisions DROP CONSTRAINT IF EXISTS finding_decisions_decision_check;
+DO $$
+BEGIN
+  ALTER TABLE finding_decisions ADD CONSTRAINT finding_decisions_decision_check
+    CHECK (decision IN ('accepted', 'rejected', 'revision', 'cleared'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- F16 — optional, exportable claims library. Substantiated claims get saved here
 -- for reuse across assets, each carrying its Valyu-sourced evidence.

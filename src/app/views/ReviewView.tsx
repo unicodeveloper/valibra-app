@@ -6,16 +6,18 @@ import type { AuditEntry, Finding, ReviewResult, Severity } from "@/lib/schemas"
 import { SAMPLE_ASSET } from "../sample-asset";
 import { AssetSheet } from "../components/AssetSheet";
 import { SampleMenu } from "../components/SampleMenu";
-import { FindingCard } from "../components/FindingCard";
+import { FindingCard, type RevisionDraft } from "../components/FindingCard";
 import { FindingsSkeleton, RunProgress, stageOf } from "../components/RunProgress";
 import {
   SEV_GLYPH,
+  CATEGORY_LABEL,
   anchorClaims,
   countBySeverity,
   groupByClaim,
   isUnchecked,
   datasetLabel,
   type Decision,
+  type DecisionNote,
 } from "../review-model";
 import type { DrKind } from "../dr";
 import { authorizedHeaders, handleAuthFailure, useAuthStore } from "../stores/auth-store";
@@ -43,8 +45,12 @@ export function ReviewView({
 }: {
   onGenerateDossier: (drug: string) => void;
   onStartDr: (kind: DrKind, input: string) => void;
-  /** A past review pulled from history, with the decisions already made on it. */
-  reopened?: { result: ReviewResult; decisions: Record<string, Decision> } | null;
+  /** A past review pulled from history, with the decisions (and their notes)
+   *  already made on it. */
+  reopened?: {
+    result: ReviewResult;
+    decisions: Record<string, { decision: Decision; rationale?: string; suggestedRevision?: string }>;
+  } | null;
 }) {
   const [assetName, setAssetName] = useState("Ozempic");
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
@@ -67,6 +73,14 @@ export function ReviewView({
 
   // Triage state
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  // Per-finding rationale + suggested revision, kept beside the decision value.
+  const [notes, setNotes] = useState<Record<string, DecisionNote>>({});
+  // Refs mirror the two maps so the persist closure always sees the latest of
+  // both — a decision write must carry the current note, and vice versa.
+  const decisionsRef = useRef(decisions);
+  decisionsRef.current = decisions;
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const [activeClaimId, setActiveClaimId] = useState<string | null>(null);
   const [sevFilter, setSevFilter] = useState<Set<Severity>>(new Set());
@@ -90,12 +104,23 @@ export function ReviewView({
     setResult(reopened.result);
     setAssetName(reopened.result.assetName);
     setAssetText(reopened.result.assetText ?? "");
-    setDecisions(reopened.decisions);
+    // Split the persisted records back into the decision map (drives buttons,
+    // counts, carry-forward) and the notes map (rationale + suggested revision).
+    const dec: Record<string, Decision> = {};
+    const nts: Record<string, DecisionNote> = {};
+    for (const [id, rec] of Object.entries(reopened.decisions)) {
+      dec[id] = rec.decision;
+      if (rec.rationale || rec.suggestedRevision) {
+        nts[id] = { rationale: rec.rationale, suggestedRevision: rec.suggestedRevision };
+      }
+    }
+    setDecisions(dec);
+    setNotes(nts);
     setActiveClaimId(null);
     setOpenIds(
       new Set(
         reopened.result.findings
-          .filter((f) => f.severity === "critical" && !reopened.decisions[f.id])
+          .filter((f) => f.severity === "critical" && !dec[f.id])
           .map((f) => f.id),
       ),
     );
@@ -130,6 +155,7 @@ export function ReviewView({
     setResult(null);
     setDuplicate(null);
     setDecisions({});
+    setNotes({});
     setOpenIds(new Set());
     setActiveClaimId(null);
     setUnsaved(0);
@@ -249,13 +275,12 @@ export function ReviewView({
   }, []);
 
   /**
-   * Apply a decision locally, then record it server-side. Optimistic on purpose:
-   * triage is a keyboard-speed activity and must never wait on a round trip.
+   * Persist a finding's current decision + note server-side. Append-only: each
+   * write is a new row, so a note edit and a decision change are both recorded.
+   * Optimistic callers update local state first; this just mirrors it to the DB.
    */
-  const decide = useCallback(
-    (id: string, d: Decision) => {
-      setDecisions((prev) => ({ ...prev, [id]: d }));
-
+  const persist = useCallback(
+    (id: string, decision: Decision, note: DecisionNote | undefined) => {
       const reviewId = result?.reviewId;
       if (!reviewId) return;
       void (async () => {
@@ -265,7 +290,12 @@ export function ReviewView({
           headers,
           // Un-deciding is recorded as "cleared", not as an absence — the audit
           // trail should show the reviewer changed their mind.
-          body: JSON.stringify({ findingId: id, decision: d ?? "cleared" }),
+          body: JSON.stringify({
+            findingId: id,
+            decision: decision ?? "cleared",
+            rationale: note?.rationale,
+            suggestedRevision: note?.suggestedRevision,
+          }),
         });
         const data = await r.json().catch(() => ({}));
         // A dead session mid-triage reopens sign-in rather than silently dropping.
@@ -276,6 +306,48 @@ export function ReviewView({
     },
     [result],
   );
+
+  /** Set a finding's decision (keyboard-speed) and persist it with its note. */
+  const decide = useCallback(
+    (id: string, d: Decision) => {
+      setDecisions((prev) => ({ ...prev, [id]: d }));
+      persist(id, d, notesRef.current[id]);
+    },
+    [persist],
+  );
+
+  /** Save a finding's rationale / suggested revision (on blur), with its decision. */
+  const setNote = useCallback(
+    (id: string, note: DecisionNote) => {
+      setNotes((prev) => ({ ...prev, [id]: note }));
+      persist(id, decisionsRef.current[id] ?? null, note);
+    },
+    [persist],
+  );
+
+  /** Ask the server for a grounded revision draft for one finding. */
+  const draftRevision = useCallback(async (finding: Finding): Promise<RevisionDraft | null> => {
+    try {
+      const headers = await authorizedHeaders({ "Content-Type": "application/json" });
+      const r = await fetch("/api/suggest-revision", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          claimText: finding.claimText ?? "",
+          category: finding.category,
+          headline: finding.headline,
+          detail: finding.detail,
+          evidence: finding.evidence.map((e) => ({ title: e.title, url: e.url, snippet: e.snippet })),
+        }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (handleAuthFailure(r.status, data)) return null;
+      if (!r.ok || !data.kind) return null;
+      return data as RevisionDraft;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // F16 carry-forward: claims this owner already CONFIRMED in a prior review.
   // Only confirmations carry — a rejected claim is dropped from library matching
@@ -309,14 +381,14 @@ export function ReviewView({
         return;
       }
       const k = e.key.toLowerCase();
-      if (k !== "a" && k !== "r") return;
+      if (k !== "a" && k !== "r" && k !== "e") return;
       const card = t?.closest<HTMLElement>(".finding");
       if (!card) return;
       const id = card.id.replace(/^finding-/, "");
       e.preventDefault();
       // Route through decide() so a keyboard decision persists exactly like a
-      // clicked one.
-      const want: Decision = k === "a" ? "accepted" : "rejected";
+      // clicked one. E = request revision.
+      const want: Decision = k === "a" ? "accepted" : k === "e" ? "revision" : "rejected";
       decide(id, decisions[id] === want ? null : want);
     }
     window.addEventListener("keydown", onKey);
@@ -328,15 +400,53 @@ export function ReviewView({
     const payload = {
       ...result,
       decisions,
+      notes,
       exportedAt: new Date().toISOString(),
       decisionSummary: {
         decided: decidedCount,
         total,
         accepted: Object.values(decisions).filter((d) => d === "accepted").length,
+        revision: Object.values(decisions).filter((d) => d === "revision").length,
         rejected: Object.values(decisions).filter((d) => d === "rejected").length,
       },
     };
     downloadJson(`mlr-review-${result.reviewId.slice(0, 8)}.json`, payload);
+  }
+
+  /**
+   * The loop-closing artifact: the consolidated change list the content team
+   * acts on. Only findings the reviewer wants changed — revise or remove — each
+   * with its reason, suggested revision, and citation.
+   */
+  function exportRevisionRequest() {
+    if (!result) return;
+    const items = result.findings.filter(
+      (f) => decisions[f.id] === "revision" || decisions[f.id] === "rejected",
+    );
+    const L: string[] = [
+      `# Revision request — ${result.assetName}`,
+      "",
+      `Product: ${result.drugName || "—"}  ·  Generated: ${new Date().toLocaleString()}`,
+      `${items.length} change${items.length === 1 ? "" : "s"} requested.`,
+      "",
+    ];
+    if (items.length === 0) {
+      L.push("_No changes requested — every finding was accepted or left undecided._");
+    }
+    items.forEach((f, i) => {
+      const note = notes[f.id] ?? {};
+      const verb = decisions[f.id] === "rejected" ? "Remove" : "Revise";
+      const cite = f.evidence[0];
+      L.push(`## ${i + 1}. ${verb} — ${CATEGORY_LABEL[f.category] ?? f.category}`);
+      L.push("");
+      L.push(`**Claim:** ${f.claimText ?? "—"}`);
+      L.push(`**Finding:** ${f.headline}${f.detail ? ` — ${f.detail}` : ""}`);
+      if (note.rationale) L.push(`**Reason:** ${note.rationale}`);
+      if (note.suggestedRevision) L.push(`**Suggested revision:** ${note.suggestedRevision}`);
+      if (cite) L.push(`**Source:** ${cite.title}${cite.url ? ` — ${cite.url}` : ""}`);
+      L.push("");
+    });
+    downloadText(`revision-request-${result.reviewId.slice(0, 8)}.md`, L.join("\n"));
   }
 
   /* -------------------------------- render ------------------------------- */
@@ -640,6 +750,7 @@ export function ReviewView({
                       finding={f}
                       claimIndex={f.claimId ? claimIndex.get(f.claimId) ?? null : null}
                       decision={decisions[f.id] ?? null}
+                      note={notes[f.id] ?? {}}
                       open={openIds.has(f.id)}
                       active={Boolean(activeClaimId && f.claimId === activeClaimId)}
                       unchecked={unchecked}
@@ -652,6 +763,8 @@ export function ReviewView({
                         })
                       }
                       onDecide={(d) => decide(f.id, d)}
+                      onNote={(note) => setNote(f.id, note)}
+                      onDraftRevision={() => draftRevision(f)}
                       onFocusClaim={() => f.claimId && focusClaim(f.claimId)}
                     />
                   </div>
@@ -683,8 +796,11 @@ export function ReviewView({
               </details>
 
               <div className="row" style={{ marginTop: 14 }}>
+                <button className="sm" onClick={exportRevisionRequest}>
+                  ↓ Export revision request
+                </button>
                 <button className="ghost sm" onClick={exportReport}>
-                  ↓ Export annotated report (JSON)
+                  Annotated report (JSON)
                 </button>
                 <button className="quiet sm" onClick={() => window.print()}>
                   Print / PDF
@@ -1036,7 +1152,15 @@ async function consumeStream(
 }
 
 function downloadJson(filename: string, obj: unknown) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  downloadBlob(filename, JSON.stringify(obj, null, 2), "application/json");
+}
+
+function downloadText(filename: string, text: string) {
+  downloadBlob(filename, text, "text/markdown");
+}
+
+function downloadBlob(filename: string, data: string, type: string) {
+  const blob = new Blob([data], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

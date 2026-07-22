@@ -83,7 +83,7 @@ export function Workspace({
   const [reopened, setReopened] = useState<{
     nonce: number;
     result: ReviewResult;
-    decisions: Record<string, Decision>;
+    decisions: Record<string, { decision: Decision; rationale?: string; suggestedRevision?: string }>;
   } | null>(null);
 
   // True while a /review/[id] URL is being fetched, so the Review tab shows a
