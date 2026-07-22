@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   -- is a single tenant, so its rows are unowned and globally visible.
   owner_sub    TEXT,
   owner_email  TEXT,
+  -- Fingerprint of the reviewed input (normalized asset text + markets), for
+  -- warning on an accidental re-run of the exact same asset. NULL on rows that
+  -- predate the column — they simply won't match a dedup check.
+  asset_hash   TEXT,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -74,9 +78,12 @@ ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 -- Per-account scoping (additive columns; NULL on existing rows = self-hosted global).
 ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS owner_sub   TEXT;
 ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS owner_email TEXT;
+ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS asset_hash  TEXT;
 ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS owner_sub   TEXT;
 CREATE INDEX IF NOT EXISTS idx_reviews_owner ON reviews(owner_sub);
 CREATE INDEX IF NOT EXISTS idx_library_owner ON claims_library(owner_sub);
+-- Dedup lookup: an owner's recent reviews of a given asset fingerprint.
+CREATE INDEX IF NOT EXISTS idx_reviews_owner_hash ON reviews(owner_sub, asset_hash, created_at DESC);
 
 -- Re-scope library uniqueness from (drug, claim) to (owner, drug, claim).
 -- Transforming, so guarded: drop the old unscoped constraint if it's still

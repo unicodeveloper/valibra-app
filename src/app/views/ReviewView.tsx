@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import type { AuditEntry, Finding, ReviewResult, Severity } from "@/lib/schemas";
 import { SAMPLE_ASSET } from "../sample-asset";
 import { AssetSheet } from "../components/AssetSheet";
@@ -23,6 +24,18 @@ import { isValyuMode } from "@/lib/app-mode";
 const MARKETS = ["US", "EU", "UK"] as const;
 type Market = (typeof MARKETS)[number];
 
+/** Compact absolute timestamp for the duplicate-review prompt. */
+function fmtWhen(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "recently";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function ReviewView({
   onGenerateDossier,
   onStartDr,
@@ -37,11 +50,20 @@ export function ReviewView({
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
   const [markets, setMarkets] = useState<Market[]>(["US"]);
 
+  const router = useRouter();
+
   const [running, setRunning] = useState(false);
   const [startedAt, setStartedAt] = useState(0);
   const [doneStages, setDoneStages] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReviewResult | null>(null);
+  // Set when the server recognizes an identical recent asset, so the reviewer
+  // can reopen the prior review instead of unknowingly re-spending credits.
+  const [duplicate, setDuplicate] = useState<{
+    id: string;
+    asset_name: string;
+    created_at: string;
+  } | null>(null);
 
   // Triage state
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
@@ -88,7 +110,8 @@ export function ReviewView({
     });
   }
 
-  const runReview = useCallback(async () => {
+  const runReview = useCallback(
+    async (force = false) => {
     // In valyu mode a review bills the reviewer's own credits, so a signed-out
     // click opens sign-in proactively rather than firing a request that 401s.
     if (isValyuMode() && !useAuthStore.getState().isAuthenticated) {
@@ -105,6 +128,7 @@ export function ReviewView({
     setDoneStages(new Set());
     setError(null);
     setResult(null);
+    setDuplicate(null);
     setDecisions({});
     setOpenIds(new Set());
     setActiveClaimId(null);
@@ -120,7 +144,7 @@ export function ReviewView({
       const res = await fetch("/api/review", {
         method: "POST",
         headers,
-        body: JSON.stringify({ assetText, assetName, markets }),
+        body: JSON.stringify({ assetText, assetName, markets, force }),
         signal: ac.signal,
       });
 
@@ -135,9 +159,15 @@ export function ReviewView({
       }
 
       // Non-streaming fallback: any deploy that buffers the response still works.
+      // The duplicate signal also comes back as plain JSON, so it's caught here.
       if (!res.headers.get("content-type")?.includes("text/event-stream")) {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
+        // Recent identical asset — offer to reopen it rather than re-run blindly.
+        if (data.duplicate) {
+          setDuplicate(data.previous);
+          return;
+        }
         finish(data as ReviewResult);
         return;
       }
@@ -247,6 +277,26 @@ export function ReviewView({
     [result],
   );
 
+  // F16 carry-forward: claims this owner already CONFIRMED in a prior review.
+  // Only confirmations carry — a rejected claim is dropped from library matching
+  // upstream ("never reused"), so it never surfaces a libraryMatch here and is
+  // always re-verified fresh. Provisional (pipeline-only, no human ruling) is
+  // not a decision to carry.
+  const pendingCarry = useMemo(
+    () =>
+      (result?.findings ?? []).filter(
+        (f) => f.libraryMatch?.status === "confirmed" && decisions[f.id] !== "accepted",
+      ),
+    [result, decisions],
+  );
+
+  /** Record the reviewer's prior confirmations on this review, attributed to
+   *  them. Not automatic — a decision only enters the audit trail because the
+   *  human asked. */
+  function applyPreviousRulings() {
+    for (const f of pendingCarry) decide(f.id, "accepted");
+  }
+
   // A / R decide whichever finding the pointer or keyboard is inside.
   useEffect(() => {
     if (!result) return;
@@ -304,6 +354,28 @@ export function ReviewView({
           onRun={runReview}
           disabled={false}
           error={error}
+          notice={
+            duplicate ? (
+              <div className="banner warn" role="status">
+                <span aria-hidden="true">●</span>
+                <div>
+                  <p className="b-t">You already reviewed this asset</p>
+                  <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                    “{duplicate.asset_name}” was reviewed {fmtWhen(duplicate.created_at)}. Reopen
+                    that review, or re-run to spend credits on a fresh one.
+                  </p>
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button className="sm" onClick={() => router.push(`/review/${duplicate.id}`)}>
+                      Open previous review
+                    </button>
+                    <button className="ghost sm" onClick={() => runReview(true)}>
+                      Re-run anyway
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null
+          }
         />
       </div>
     );
@@ -372,7 +444,7 @@ export function ReviewView({
                 <p className="b-t">Review failed</p>
                 <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>{error}</p>
                 <div className="row" style={{ marginTop: 10 }}>
-                  <button className="sm" onClick={runReview}>
+                  <button className="sm" onClick={() => runReview(true)}>
                     Retry
                   </button>
                 </div>
@@ -397,7 +469,7 @@ export function ReviewView({
                       Valyu reported: {result.retrievalHalt}
                     </p>
                     <div className="row" style={{ marginTop: 10 }}>
-                      <button className="sm" onClick={runReview}>
+                      <button className="sm" onClick={() => runReview(true)}>
                         Re-run review
                       </button>
                     </div>
@@ -463,6 +535,26 @@ export function ReviewView({
                         </>
                       )}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {pendingCarry.length > 0 && (
+                <div className="banner info" role="status">
+                  <span aria-hidden="true">↻</span>
+                  <div>
+                    <p className="b-t">
+                      You confirmed {pendingCarry.length} of these claim
+                      {pendingCarry.length === 1 ? "" : "s"} in an earlier review
+                    </p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Accept them on this review too — recorded as your decision in the audit trail.
+                    </p>
+                    <div className="row" style={{ marginTop: 10 }}>
+                      <button className="sm" onClick={applyPreviousRulings}>
+                        Accept {pendingCarry.length} previously confirmed
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -621,6 +713,7 @@ function Compose({
   onRun,
   disabled,
   error,
+  notice,
 }: {
   assetName: string;
   setAssetName: (s: string) => void;
@@ -631,6 +724,8 @@ function Compose({
   onRun: () => void;
   disabled: boolean;
   error: string | null;
+  /** Optional bar shown above the form (e.g. the duplicate-review notice). */
+  notice?: ReactNode;
 }) {
   return (
     <div className="compose">
@@ -649,6 +744,8 @@ function Compose({
           <li>Open source · MIT</li>
         </ul>
       </header>
+
+      {notice && <div className="compose-notice">{notice}</div>}
 
       <div className="compose-body">
       <div className="compose-form">
@@ -676,7 +773,7 @@ function Compose({
 
         <div className="compose-actions">
           <div className="row">
-            <button onClick={onRun} disabled={disabled || !assetText.trim()}>
+            <button onClick={() => onRun()} disabled={disabled || !assetText.trim()}>
               Run review
             </button>
             <SampleMenu
