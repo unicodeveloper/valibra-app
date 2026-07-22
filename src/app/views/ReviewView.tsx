@@ -99,21 +99,33 @@ export function ReviewView({
   // them believe it was saved.
   const [unsaved, setUnsaved] = useState(0);
   const [persistOff, setPersistOff] = useState(false);
+  // Set when a free review is claimed into a new account on sign-in — the payoff
+  // the conversion wall promised. Auto-dismisses.
+  const [claimed, setClaimed] = useState(false);
 
   // Subscribed (not read imperatively) so the restore-on-sign-in effect fires the
   // moment a conversion completes and the store flips authenticated.
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
+  useEffect(() => {
+    if (!claimed) return;
+    const t = setTimeout(() => setClaimed(false), 6000);
+    return () => clearTimeout(t);
+  }, [claimed]);
+
   /** Persist a claimed free-run review into the now-signed-in account. */
   const claimReview = useCallback(async (r: ReviewResult) => {
     try {
       const headers = await authorizedHeaders({ "Content-Type": "application/json" });
-      await fetch("/api/reviews/claim", {
+      const resp = await fetch("/api/reviews/claim", {
         method: "POST",
         headers,
         body: JSON.stringify({ result: r }),
       });
-      track("review_claimed", { reviewId: r.reviewId });
+      if (resp.ok) {
+        track("review_claimed", { reviewId: r.reviewId });
+        setClaimed(true); // deliver the "saved to your library" payoff
+      }
     } catch {
       /* best-effort — the review still shows on screen even if the save fails */
     }
@@ -208,6 +220,7 @@ export function ReviewView({
     setOpenIds(new Set());
     setActiveClaimId(null);
     setUnsaved(0);
+    setClaimed(false);
 
     try {
       // In valyu mode this attaches the reviewer's token so the run bills their
@@ -387,6 +400,16 @@ export function ReviewView({
     (id: string, decision: Decision, note: DecisionNote | undefined) => {
       const reviewId = result?.reviewId;
       if (!reviewId) return;
+      // Acting on a free review (deciding, annotating) is a high-intent moment —
+      // an anon can't persist, so instead of a doomed POST, raise the conversion
+      // wall. The decision still shows locally; signing in saves it and the review.
+      if (!useAuthStore.getState().isAuthenticated) {
+        useAuthStore.getState().openSignInModal({
+          title: "Save your review",
+          lede: "Connect your Valyu account to keep your decisions and save this review to your library.",
+        });
+        return;
+      }
       void (async () => {
         const headers = await authorizedHeaders({ "Content-Type": "application/json" });
         const r = await fetch(`/api/reviews/${reviewId}/decisions`, {
@@ -499,8 +522,22 @@ export function ReviewView({
     return () => window.removeEventListener("keydown", onKey);
   }, [result, decide, decisions]);
 
+  /**
+   * The exportable artifacts are the "keep it" payoff — gate them behind an
+   * account so an anon's high-intent "I want to take this with me" becomes the
+   * conversion wall rather than a free download.
+   */
+  function requireAccountForExport(): boolean {
+    if (useAuthStore.getState().isAuthenticated) return true;
+    useAuthStore.getState().openSignInModal({
+      title: "Save & export",
+      lede: "Connect your Valyu account to export this review and save it to your library.",
+    });
+    return false;
+  }
+
   function exportReport() {
-    if (!result) return;
+    if (!result || !requireAccountForExport()) return;
     const payload = {
       ...result,
       decisions,
@@ -523,7 +560,7 @@ export function ReviewView({
    * with its reason, suggested revision, and citation.
    */
   function exportRevisionRequest() {
-    if (!result) return;
+    if (!result || !requireAccountForExport()) return;
     const items = result.findings.filter(
       (f) => decisions[f.id] === "revision" || decisions[f.id] === "rejected",
     );
@@ -565,7 +602,16 @@ export function ReviewView({
           setAssetText={setAssetText}
           markets={markets}
           toggleMarket={toggleMarket}
-          onRun={runReview}
+          onRun={() => {
+            // Clicking Run on the untouched sample would waste the one free run
+            // reproducing the cached sample. Show the cached one (free, instant)
+            // instead — editing the asset to their own content triggers a real run.
+            if (!isAuthenticated && assetText.trim() === SAMPLE_ASSET.trim()) {
+              void loadSampleReview();
+            } else {
+              void runReview();
+            }
+          }}
           onSeeSample={loadSampleReview}
           disabled={false}
           error={error}
@@ -670,6 +716,17 @@ export function ReviewView({
 
           {result && (
             <>
+              {claimed && (
+                <div className="banner ok" role="status">
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <p className="b-t">Saved to your library</p>
+                    <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
+                      Your review is in your account — reopen it any time from History.
+                    </p>
+                  </div>
+                </div>
+              )}
               {isSample && (
                 <div className="banner info" role="status">
                   <span aria-hidden="true">✦</span>
