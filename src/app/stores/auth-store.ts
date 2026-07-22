@@ -314,10 +314,21 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 export async function authorizedHeaders(
   base: Record<string, string> = {},
 ): Promise<Record<string, string>> {
-  const { getAccessToken, refreshAccessToken, isAuthenticated } = useAuthStore.getState();
-  if (!isAuthenticated) return base;
+  const { getAccessToken, refreshAccessToken } = useAuthStore.getState();
 
-  const token = getAccessToken() ?? (await refreshAccessToken());
+  // getAccessToken() reads the store, then falls back to localStorage and adopts
+  // a still-valid persisted session. That fallback is what makes a page RELOAD
+  // work: this runs before the auth store has rehydrated, and the old
+  // `if (!isAuthenticated) return base` guard raced that rehydration — it sent no
+  // token, drew a 401, and (via handleAuthFailure → signOut) wiped the session,
+  // so every reload of e.g. /review/[id] demanded a fresh sign-in.
+  let token = getAccessToken();
+
+  // Token missing or expired but a persisted session exists → refresh it.
+  // Guarded on a stored refresh token so self-hosted (no session) attaches
+  // nothing and never triggers a needless sign-out.
+  if (!token && loadTokens()?.refreshToken) token = await refreshAccessToken();
+
   return token ? { ...base, Authorization: `Bearer ${token}` } : base;
 }
 

@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runReview } from "@/lib/pipeline";
-import { persistReview, saveToLibrary, type Owner } from "@/lib/db/client";
+import {
+  persistReview,
+  saveToLibrary,
+  assetHash,
+  findRecentByHash,
+  type Owner,
+} from "@/lib/db/client";
 import {
   bearerToken,
   runScoped,
@@ -15,19 +21,25 @@ import type { AuditEntry, ReviewResult } from "@/lib/schemas";
 export const runtime = "nodejs";
 export const maxDuration = 300; // substantiation fans out across many Valyu calls
 
+/** How recently an identical asset must have been reviewed to warn on a re-run.
+ *  Default two weeks; env-tunable. */
+const RERUN_WINDOW_HOURS = Number(process.env.RERUN_WINDOW_HOURS) || 336;
+
 const RequestSchema = z.object({
   assetText: z.string().min(1, "assetText is required"),
   assetName: z.string().default("Untitled asset"),
   markets: z.array(z.enum(["US", "EU", "UK"])).default(["US"]), // F14
+  // Set by the client's "Re-run anyway" action to bypass the duplicate warning.
+  force: z.boolean().default(false),
 });
 
-/** Best-effort persistence — a DB outage must never fail a review. `owner` is
- *  captured while the billing scope is still bound and passed in as a plain
- *  value, because this runs fire-and-forget after the scope has unwound. */
-function persist(result: ReviewResult, owner: Owner) {
+/** Best-effort persistence — a DB outage must never fail a review. `owner` and
+ *  `hash` are captured while the billing scope is still bound and passed in as
+ *  plain values, because this runs fire-and-forget after the scope unwinds. */
+function persist(result: ReviewResult, owner: Owner, hash: string | null) {
   // saveToLibrary is chained AFTER persistReview so the reviews row exists
   // first (the claims_library FK references it).
-  persistReview(result, owner)
+  persistReview(result, owner, hash)
     .then(() => saveToLibrary(result, owner)) // F16
     .catch((e) => console.error("persistence failed:", e));
 }
@@ -47,7 +59,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { assetText, assetName, markets } = parsed.data;
+  const { assetText, assetName, markets, force } = parsed.data;
 
   // Who pays for this review's ~15 Valyu searches. Captured here and threaded
   // explicitly into the run below, rather than relying on an ambient scope, so
@@ -64,21 +76,41 @@ export async function POST(req: Request) {
     );
   }
 
+  // Resolve the owner up front: it scopes persistence + F16 reuse, and the
+  // dedup check below needs it too. A dead token surfaces here as a reauth.
+  let owner: Owner;
+  try {
+    owner = await runScoped(token, currentIdentity);
+  } catch (err) {
+    if (err instanceof ValyuAuthError) {
+      return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
+    }
+    const message = publicErrorMessage(err, "Review failed. Check the server logs for details.");
+    logServerError("identity resolution failed", err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  // Don't silently re-spend on an identical asset the owner already reviewed
+  // recently — hand the client a duplicate signal so it can offer to reopen the
+  // prior review instead. Bypassed by an explicit "Re-run anyway" (force) and
+  // when persistence is off (nothing to dedup against).
+  const hash = assetHash(assetText, markets);
+  if (process.env.DATABASE_URL && !force) {
+    const previous = await findRecentByHash(owner, hash, RERUN_WINDOW_HOURS);
+    if (previous) {
+      return NextResponse.json({ duplicate: true, previous });
+    }
+  }
+
   // Clients that ask for a stream get the audit trail live as the pipeline
   // walks it; everyone else gets the same single JSON payload as before.
   if (req.headers.get("accept")?.includes("text/event-stream")) {
-    return streamReview(assetText, assetName, markets, token);
+    return streamReview(assetText, assetName, markets, token, owner, hash);
   }
 
   try {
-    const { result, owner } = await runScoped(token, async () => {
-      // Resolve the owner inside the scope so persistence is attributed to the
-      // signed-in reviewer (valyu) or null (self-hosted); also scopes F16 reuse.
-      const owner = await currentIdentity();
-      const result = await runReview(assetText, assetName, markets, owner);
-      return { result, owner };
-    });
-    persist(result, owner);
+    const result = await runScoped(token, () => runReview(assetText, assetName, markets, owner));
+    persist(result, owner, hash);
     return NextResponse.json(result);
   } catch (err) {
     // A dead token mid-review is a reauth prompt, not a generic 500.
@@ -96,6 +128,8 @@ function streamReview(
   assetName: string,
   markets: string[],
   token: string | null,
+  owner: Owner,
+  hash: string,
 ) {
   const encoder = new TextEncoder();
 
@@ -113,19 +147,14 @@ function streamReview(
 
       try {
         // Re-bind the billing credential here: this callback runs after the
-        // route handler returned, so any ambient scope is already gone.
-        const { result, owner } = await runScoped(token, async () => {
-          const owner = await currentIdentity();
-          const result = await runReview(
-            assetText,
-            assetName,
-            markets,
-            owner,
-            (entry: AuditEntry) => send("stage", entry),
-          );
-          return { result, owner };
-        });
-        persist(result, owner);
+        // route handler returned, so any ambient scope is already gone. `owner`
+        // was already resolved before streaming began and is passed straight in.
+        const result = await runScoped(token, () =>
+          runReview(assetText, assetName, markets, owner, (entry: AuditEntry) =>
+            send("stage", entry),
+          ),
+        );
+        persist(result, owner, hash);
         send("done", result);
       } catch (err) {
         const message =

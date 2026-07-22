@@ -910,6 +910,16 @@ code {
   flex: 1;
   min-height: 470px;
 }
+/* A notice (e.g. the duplicate-review prompt) sits above the two cards, sized
+   to the left (form) column so it reads as attached to the form rather than
+   floating loose across the whole width. */
+.compose-notice {
+  width: calc(50% - 11px);
+  margin-bottom: 18px;
+}
+.compose-notice .banner {
+  margin-bottom: 0;
+}
 .compose-form {
   position: relative;
   display: flex;
@@ -965,6 +975,9 @@ code {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     min-height: 0;
+  }
+  .compose-notice {
+    width: 100%;
   }
   .compose-form,
   .compose-form .field:has(textarea) {
@@ -1840,6 +1853,13 @@ code {
 .banner.warn {
   background: var(--warn-wash);
   border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.banner.info {
+  background: var(--accent-wash);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.banner.info .b-t {
+  color: var(--accent-ink);
 }
 .banner .b-t {
   font-weight: 700;
