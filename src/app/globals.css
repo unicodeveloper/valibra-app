@@ -892,6 +892,21 @@ code {
   font-size: 11px;
   font-weight: 700;
 }
+/* "See it work" — the zero-cost, no-account entry into a real cited review.
+   A quiet text link so it invites without competing with the primary Run CTA. */
+.see-sample {
+  margin: 14px 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.see-sample:hover {
+  text-decoration: underline;
+}
 
 /* Form fields — a real field wrapper instead of inline-height spacer divs, so
    the vertical rhythm is set once and the markup carries no layout literals. */

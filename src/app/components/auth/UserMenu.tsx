@@ -48,7 +48,7 @@ export function UserMenu() {
 
   if (!isAuthenticated || !user) {
     return (
-      <button className="ghost sm auth-signin" onClick={openSignInModal}>
+      <button className="ghost sm auth-signin" onClick={() => openSignInModal()}>
         Sign in
       </button>
     );
