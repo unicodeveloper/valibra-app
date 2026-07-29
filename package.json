@@ -12,8 +12,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "db:init": "node --env-file-if-exists=.env.local scripts/db-init.mjs",
-    "dev:reset-trial": "node --env-file-if-exists=.env.local scripts/reset-trial.mjs"
+    "db:init": "node scripts/db-init.mjs",
+    "dev:reset-trial": "node scripts/reset-trial.mjs"
   },
   "dependencies": {
     "next": "^15.5.4",

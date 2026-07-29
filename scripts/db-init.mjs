@@ -17,6 +17,11 @@ import postgres from "postgres";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadEnvLocal } from "./load-env-local.mjs";
+
+// A local run reads .env.local; on Railway the file is absent and the real
+// environment is used untouched.
+loadEnvLocal();
 
 const url = process.env.DATABASE_URL;
 if (!url) {
