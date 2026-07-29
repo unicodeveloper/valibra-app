@@ -8,7 +8,11 @@
 export type DrKind = "device" | "hcp" | "indication" | "surveillance" | "dossier";
 
 export interface DrTask {
+  /** Valyu's task id. Empty string while a task is still being created — the
+   *  poller keys off this being truthy, so an optimistic row is never polled. */
   taskId: string;
+  /** Set only on an optimistic row, so the real task can replace exactly it. */
+  localId?: string;
   kind: DrKind;
   input: string;
   feature: string;

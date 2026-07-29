@@ -4,7 +4,7 @@
  * per visitor (the honest-user limit; IP + daily budget are the abuse
  * backstops). Cleared storage resets it, which the IP cap is there to catch.
  */
-const KEY = "valibra_anon_id";
+const KEY = "openmlr_anon_id";
 
 export function anonId(): string {
   if (typeof window === "undefined") return "";

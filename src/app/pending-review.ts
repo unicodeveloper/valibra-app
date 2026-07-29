@@ -9,7 +9,7 @@ import type { ReviewResult } from "@/lib/schemas";
  * On sign-in the app restores this and CLAIMS the review into the new account —
  * the free run becomes the reviewer's first saved review, closing the loop.
  */
-const KEY = "valibra_pending_review";
+const KEY = "openmlr_pending_review";
 
 export interface PendingReview {
   assetText: string;

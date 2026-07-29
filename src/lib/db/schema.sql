@@ -139,6 +139,32 @@ CREATE INDEX IF NOT EXISTS idx_anon_runs_fp ON anon_runs(fingerprint);
 CREATE INDEX IF NOT EXISTS idx_anon_runs_ip ON anon_runs(ip, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_anon_runs_created ON anon_runs(created_at DESC);
 
+-- DeepResearch tasks. These run for minutes against the reviewer's own Valyu
+-- credits, so losing track of one loses work they paid for: held here rather
+-- than in the browser, which is what makes a run survive sign-out, a reload, or
+-- moving to another machine.
+--
+-- Owner-scoped exactly like reviews (NULL = the self-hosted global tenant). The
+-- task_id is Valyu's, and it is the primary key: polling upserts the same row as
+-- the task progresses, so a status update can never fork into a second record.
+CREATE TABLE IF NOT EXISTS dr_tasks (
+  task_id     TEXT PRIMARY KEY,
+  owner_sub   TEXT,
+  kind        TEXT        NOT NULL,
+  input       TEXT        NOT NULL,
+  feature     TEXT        NOT NULL DEFAULT '',
+  dataset     TEXT        NOT NULL DEFAULT '',
+  status      TEXT        NOT NULL DEFAULT 'queued',
+  title       TEXT,
+  output      TEXT,
+  -- [{ title, url }] as returned by DeepResearch.
+  sources     JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  error       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_dr_tasks_owner ON dr_tasks(owner_sub, created_at DESC);
+
 -- ============================================================================
 -- Migration patterns
 --

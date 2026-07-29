@@ -10,7 +10,7 @@ const THEMES: { id: Theme; label: string; hint: string }[] = [
   { id: "dark", label: "Dark", hint: "Always dark" },
 ];
 
-export const THEME_KEY = "valibra-theme";
+export const THEME_KEY = "openmlr-theme";
 
 /**
  * Theme control.

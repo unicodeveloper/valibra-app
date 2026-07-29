@@ -1,7 +1,7 @@
 /**
  * App mode.
  *
- * Valibra runs in one of two modes, and the difference is *whose Valyu credits
+ * OpenMLR runs in one of two modes, and the difference is *whose Valyu credits
  * pay for a review*:
  *
  *   self-hosted — the deployment's own VALYU_API_KEY pays for everything, and

@@ -34,7 +34,7 @@
 }
 
 /* =========================================================================
-   Valibra — design system
+   OpenMLR — design system
 
    The register is "reviewer's desk": an evidence document under annotation,
    not a SaaS dashboard. Three rules the rest of the file follows:
@@ -140,6 +140,16 @@
   --t-lg: 22px;
   --t-xl: 31px;
   --t-display: 40px;
+
+  /* Vertical space the shell reserves outside the view itself: the 59px sticky
+     masthead plus the 46px disclaimer footer. Anything that wants to fill "one
+     screen" must subtract this, or it pushes the footer off the bottom and
+     forces a scroll that has nothing to do with the content.
+
+     Measured, not derived: the footer's 13px padding either side of a 19.6px
+     line rounds to 46, and reserving 45 left a one-pixel scrollbar on every
+     screen — which is just as annoying as a hundred. */
+  --shell-chrome: 105px;
 }
 
 
@@ -216,20 +226,25 @@ body {
   gap: 28px;
   min-height: 58px;
 }
-@media (max-width: 560px) {
-  /* Brand + five tabs + the theme control can't share one row on a phone. Two
-     rows via grid: brand and theme control up top, tabs underneath with their
-     own horizontal scroll rather than pushing the page sideways. Grid rather
-     than a column flex so the theme control can sit beside the brand instead of
-     claiming a third full-width row of masthead. */
+/* 860px, not 560: brand + five tabs + the theme control + the auth control need
+   821px to share one row, so every width from 561 to 820 was overflowing the
+   masthead sideways — 29px of real horizontal scroll on a 768px tablet. The
+   two-row layout has to start before the single row runs out of space, not at
+   phone widths. */
+@media (max-width: 860px) {
+  /* Brand + five tabs + the theme control can't share one row here. Two rows via
+     grid: brand, theme control and auth control up top, tabs underneath with
+     their own horizontal scroll rather than pushing the page sideways. Grid
+     rather than a column flex so those controls can sit beside the brand instead
+     of each claiming a full-width row of masthead. */
   .mast-inner {
     display: grid;
     /* minmax(0, 1fr), not 1fr: a `1fr` track has an auto (min-content) floor, and
        .nav spans both columns, so the full width of five tabs was propped the
        track open and pushed the document 8px wider than the viewport. */
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 0;
+    gap: 0 10px;
     padding: 0 14px;
   }
   /* Rows are pinned explicitly. Auto-placement is order-dependent and never
@@ -245,6 +260,16 @@ body {
   .theme-seg {
     grid-column: 2;
     grid-row: 1;
+  }
+  /* The auth control needs pinning for the same reason, and it has two shapes —
+     the "Sign in" button when signed out, the avatar slot when signed in (and
+     during rehydration). Both land in the same cell, or the signed-out state
+     drops to a third row and stretches to the full column width. */
+  .auth-signin,
+  .auth-slot {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
   }
   .nav {
     grid-column: 1 / -1;
@@ -290,18 +315,52 @@ body {
 .brand-home:hover {
   color: var(--accent);
 }
-.brand .by {
-  font-size: var(--t-label);
-  color: var(--ink-3);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  padding-left: 10px;
-  border-left: 1px solid var(--line);
+
+/* Standing disclaimer. Quiet by design — it has to be present on every view
+   without competing with the review itself.
+
+   The column layout is what keeps it at the bottom of the viewport on a short
+   view (an empty library, a one-line error) instead of floating halfway up the
+   page. Fixed-position children — toasts, the sign-in modal — are out of flow
+   and unaffected. */
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
-@media (max-width: 720px) {
-  .brand .by {
-    display: none;
-  }
+body > main {
+  flex: 1;
+  /* Decorative layers are allowed to bleed past the content column — that's what
+     gives the hero its soft field of light (.compose::before insets itself -8%
+     on both sides). What they are NOT allowed to do is widen the document: that
+     bleed put 75px of real horizontal scroll on the page at narrow-ish widths,
+     where the gutter is thinner than 8% of the column.
+
+     `clip`, not `hidden`: hidden makes this a scroll container, which would trap
+     the sticky .doc-pane inside the results view. clip cuts the overflow without
+     creating one. Cutting at main's edge — full-bleed, never max-width'd — means
+     the cut lands exactly on the viewport edge, so nothing that was visible
+     before disappears. */
+  overflow-x: clip;
+}
+/* Height here is load-bearing — it's the footer half of --shell-chrome (46px
+   measured). Changing this padding means changing that token too.
+
+   No margin-top: the views above already end in their own bottom padding, and
+   on the compose landing the wrapper centres its block, so the gap comes for
+   free. A margin here would be space the viewport lock can't see. */
+.foot {
+  border-top: 1px solid var(--line);
+  padding: 13px 24px;
+}
+.foot p {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-wrap: pretty;
 }
 
 /* Tabs.
@@ -804,11 +863,17 @@ code {
 /* The compose landing is locked to one viewport: this wrapper fills the space
    below the sticky masthead and centres the block, so an average laptop user
    sees the hero, the form, every control and the full checklist without
-   scrolling. On phones (handled below) it releases and scrolls normally. */
+   scrolling. On phones (handled below) it releases and scrolls normally.
+
+   The lock has to subtract the footer as well as the masthead, or the landing
+   claims the whole viewport and then puts the disclaimer *underneath* it —
+   which is a guaranteed scroll of exactly the footer's height, on every screen,
+   no matter how tall. --shell-chrome is that reservation, kept in one place so
+   the two min-heights below can't drift apart. */
 .wrap.compose-wrap {
   padding-top: 0;
   padding-bottom: 0;
-  min-height: calc(100dvh - 59px);
+  min-height: calc(100dvh - var(--shell-chrome));
   display: flex;
   align-items: center;
 }
@@ -817,10 +882,14 @@ code {
   width: 100%;
   max-width: 1260px;
   margin: 0 auto;
-  padding: 22px 0;
+  /* 10, not 22: the footer's height has to come from somewhere, and the block is
+     vertically centred in its wrapper anyway, so trimming its own padding costs
+     nothing visually and buys back pixels a short laptop window needs to see the
+     whole landing without scrolling. */
+  padding: 10px 0;
   display: flex;
   flex-direction: column;
-  min-height: calc(100dvh - 59px);
+  min-height: calc(100dvh - var(--shell-chrome));
 }
 /* A single soft field of light behind the hero — a low aurora plus a faint
    engineering grid — so the first screen has depth instead of sitting flat on
@@ -845,24 +914,38 @@ code {
 /* The hero is its own full-width row above the two cards. */
 .compose-head {
   flex: none;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
+/* Capped at 32, not 40: the hero is two lines of display type either way, and
+   the eight pixels per line are the difference between the landing fitting a
+   short laptop window and pushing the footer off the bottom. It still outranks
+   everything else on the screen by a wide margin. */
 .compose-head h2 {
-  font-size: clamp(26px, 3vw, 40px);
+  font-size: clamp(24px, 2.4vw, 32px);
   font-weight: 700;
   letter-spacing: -0.045em;
-  line-height: 1.02;
+  line-height: 1.05;
   color: var(--ink);
   margin: 0;
   max-width: 20ch;
   text-wrap: balance;
 }
+/* No ch cap: the sentence fits one line across the 1260px column, and the
+   second line was pure vertical cost. It still wraps to two on a narrow
+   desktop window, which is why the viewport lock has headroom rather than
+   being tuned to the pixel. */
 .compose-lede {
   font-size: 14.5px;
   line-height: 1.5;
   color: var(--ink-2);
-  margin: 11px 0 0;
-  max-width: 88ch;
+  margin: 9px 0 0;
+}
+.compose-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 12px;
 }
 /* Factual trust row — the credibility of the tool stated plainly, in the same
    restrained register as the rest of the app. No adjectives, just what is true. */
@@ -871,7 +954,7 @@ code {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin: 14px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -895,7 +978,7 @@ code {
 /* "See it work" — the zero-cost, no-account entry into a real cited review.
    A quiet text link so it invites without competing with the primary Run CTA. */
 .see-sample {
-  margin: 14px 0 0;
+  margin: 0;
   padding: 0;
   background: none;
   border: none;
@@ -2102,14 +2185,6 @@ code {
   line-height: 1.1;
   text-transform: capitalize;
 }
-.report .r-sub {
-  font-family: var(--font-mono), monospace;
-  font-size: var(--t-micro);
-  color: var(--ink-3);
-  margin: 0 0 6px;
-  padding-bottom: 18px;
-  border-bottom: 2px solid var(--ink);
-}
 @media (max-width: 620px) {
   .report .r-title {
     font-size: var(--t-lg);
@@ -2228,27 +2303,6 @@ code {
   letter-spacing: 0;
   text-transform: none;
   margin: 16px 0 6px;
-}
-.gaps {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.gaps li {
-  font-size: 13.5px;
-  color: var(--ink-2);
-  margin: 0 0 7px;
-  padding-left: 20px;
-  position: relative;
-  line-height: 1.55;
-}
-.gaps li::before {
-  content: "◆";
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: var(--warn);
-  font-size: 9px;
 }
 .sources {
   display: flex;
@@ -2380,6 +2434,111 @@ td.claim-c {
   box-shadow: var(--sh-1);
   padding: 16px 18px;
   margin-bottom: 12px;
+}
+/* The report preview on the card. Clamped to three lines so every card in the
+   list is the same height whatever the report's shape — the point of the list
+   is comparing tasks, not reading one. */
+.dr-excerpt {
+  margin: 10px 0 0;
+  font-size: var(--t-sm);
+  line-height: 1.6;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dr-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* ------------------------------------------------------------- drawer -- */
+
+/* Reading surface for one deep-research report, over the list rather than in
+   it. Scrim is a flex row so the panel pins to the trailing edge. */
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--ink) 38%, transparent);
+  backdrop-filter: blur(3px);
+  animation: auth-fade 0.16s ease;
+}
+.drawer {
+  width: min(760px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+  box-shadow: var(--sh-3);
+  animation: drawer-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(28px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.drawer-t {
+  font-size: var(--t-lg);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.drawer-x {
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 4px;
+  min-width: 30px;
+  min-height: 30px;
+  color: var(--ink-3);
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.drawer-x:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+.drawer-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 55%, transparent);
+  flex: none;
+}
+.drawer-tools .hint {
+  margin-right: 2px;
+}
+/* The only scrolling region — the page behind is locked while this is open. */
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 22px 30px;
 }
 .dr-top {
   display: flex;
@@ -2759,6 +2918,21 @@ td.claim-c {
   }
 }
 
+/* Pending spinner for a button that has fired a request. Inherits currentColor
+   so it reads on a filled button and a ghost one without a second rule. */
+.btn-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 7px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.75;
+  animation: auth-spin 0.7s linear infinite;
+}
+
 /* Success / failure glyphs on the callback card. Colour is reinforced by the
    glyph and the heading word, never carried alone — the same rule the review
    severities follow. */
@@ -2809,5 +2983,38 @@ td.claim-c {
   }
   .f-body {
     display: block !important;
+  }
+
+  /* An open report drawer IS the document being printed — that's how the PDF
+     download works. Everything else on the page is hidden, and the drawer drops
+     its overlay chrome (fixed position, scrim, scroll container, own height) so
+     the report flows across pages instead of printing one clipped panel. */
+  body:has(.drawer) > *:not(.drawer-scrim) {
+    display: none !important;
+  }
+  .drawer-scrim {
+    position: static;
+    display: block;
+    background: none;
+    backdrop-filter: none;
+    animation: none;
+  }
+  .drawer {
+    width: auto;
+    height: auto;
+    border: 0;
+    box-shadow: none;
+    animation: none;
+  }
+  .drawer-head {
+    border-bottom: 1px solid #ddd;
+    padding: 0 0 10px;
+  }
+  .drawer-body {
+    overflow: visible;
+    padding: 14px 0 0;
+  }
+  .drawer-tools {
+    display: none !important;
   }
 }

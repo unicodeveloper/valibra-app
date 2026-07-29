@@ -49,22 +49,27 @@ const SITE_URL = (() => {
 })();
 
 const DESCRIPTION =
-  "Valibra is an open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) pre-check. It extracts every promotional claim and tests it against approved labelling, trial records and the peer-reviewed literature — and every finding cites its source, for a reviewer to accept or reject.";
+  "OpenMLR is an open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) pre-check. It extracts every promotional claim and tests it against approved labelling, trial records and the peer-reviewed literature — and every finding cites its source, for a reviewer to accept or reject.";
 
 const SHORT_DESCRIPTION =
   "Open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence — every finding cited.";
 
+/** Matches the hero on the landing page, so the tab, the search result and the
+ *  first thing on screen all say the same thing. Declared once — it appears in
+ *  the document title, the Open Graph card and the Twitter card. */
+const TITLE = "OpenMLR — Check every claim against the evidence";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Valibra — open MLR review",
-    template: "%s · Valibra",
+    default: TITLE,
+    template: "%s · OpenMLR",
   },
   description: DESCRIPTION,
-  applicationName: "Valibra",
-  authors: [{ name: "Valibra" }],
-  creator: "Valibra",
-  publisher: "Valibra",
+  applicationName: "OpenMLR",
+  authors: [{ name: "OpenMLR" }],
+  creator: "OpenMLR",
+  publisher: "OpenMLR",
   category: "technology",
   keywords: [
     "MLR review",
@@ -82,15 +87,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "Valibra",
-    title: "Valibra — open MLR review",
+    siteName: "OpenMLR",
+    title: TITLE,
     description: SHORT_DESCRIPTION,
     url: "/",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Valibra — open MLR review",
+    title: TITLE,
     description: SHORT_DESCRIPTION,
   },
   robots: {
@@ -111,7 +116,7 @@ export const metadata: Metadata = {
  * Wrapped in try/catch because localStorage throws outright in some privacy
  * modes, and a theme preference must never be able to take down the page.
  */
-const THEME_BOOTSTRAP = `try{var t=localStorage.getItem("valibra-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+const THEME_BOOTSTRAP = `try{var t=localStorage.getItem("openmlr-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -14,7 +14,7 @@ import { ImageResponse } from "next/og";
 export const runtime = "nodejs";
 
 export const alt =
-  "Valibra — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.";
+  "OpenMLR — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -76,7 +76,7 @@ export default function OpengraphImage() {
         {/* Brand row — wordmark and the same tagline the masthead carries. */}
         <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", fontSize: 38, fontWeight: 700, letterSpacing: -0.5 }}>
-            Valibra
+            OpenMLR
           </div>
           <div
             style={{ display: "flex", width: 1, height: 30, backgroundColor: LINE, margin: "0 22px" }}

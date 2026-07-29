@@ -266,19 +266,6 @@ export function getPatents(query: string): Promise<Retrieval> {
   return search(query, [SOURCES.uspto, SOURCES.epo], 6);
 }
 
-/** F18 — gather broad evidence across datasets for a deep-research dossier. */
-export async function gatherDossierEvidence(drugName: string): Promise<Retrieval> {
-  const d = normalizeDrug(drugName);
-  const [label, efficacy, faers] = await Promise.all([
-    getLabel(d),
-    search(`${d} efficacy outcomes pivotal clinical trials`, [SOURCES.clinicalTrials, SOURCES.pubmed, SOURCES.wileyHls], 6),
-    getAdverseEvents(d),
-  ]);
-  const error = label.error || efficacy.error || faers.error;
-  const evidence = [...label.evidence, ...efficacy.evidence, ...faers.evidence];
-  return { evidence, error: error || null };
-}
-
 /** F12 — SEC filings + open web for market-position / share claims. */
 export async function getMarketEvidence(query: string): Promise<Retrieval> {
   const [sec, web] = await Promise.all([

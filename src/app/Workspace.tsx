@@ -10,12 +10,18 @@ import { ResearchView } from "./views/ResearchView";
 import { HistoryView } from "./views/HistoryView";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { SignInGate, SignInModal, UserMenu } from "./components/auth";
-import { authorizedHeaders, handleAuthFailure } from "./stores/auth-store";
-import { DR_LABELS, isDone, type DrKind, type DrTask } from "./dr";
+import { authorizedHeaders, handleAuthFailure, useAuthStore } from "./stores/auth-store";
+import { isValyuMode } from "@/lib/app-mode";
+import { notifyReportReady } from "./notify";
+import { DR_LABELS, DR_SOURCE, isDone, type DrKind, type DrTask } from "./dr";
 import type { ReviewResult } from "@/lib/schemas";
 import type { Decision } from "./review-model";
 
 export type View = "review" | "history" | "library" | "dossier" | "research";
+
+/** Kept in step with the `title` in app/layout.tsx — the badge below rewrites
+ *  document.title, so it needs the unbadged string to restore. */
+const BASE_TITLE = "OpenMLR — Check every claim against the evidence";
 
 const TABS: { id: View; label: string }[] = [
   { id: "review", label: "Review" },
@@ -32,23 +38,41 @@ interface Toast {
   action?: { label: string; run: () => void };
 }
 
-/** DeepResearch tasks are kept in sessionStorage, not just React state, for two
- *  reasons that arrived together with routing: (1) opening a saved review is now
- *  a real navigation to /review/[id], which remounts this shell — without a
- *  store the in-flight task list would vanish mid-run; (2) a plain refresh would
- *  have dropped them too. Session (not local) scope is deliberate: these tasks
- *  belong to the tab's working session, and polling resumes on rehydrate. */
-const DR_STORAGE_KEY = "valibra_dr_tasks";
-
-function loadDrTasks(): DrTask[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = sessionStorage.getItem(DR_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+/**
+ * DeepResearch tasks come from the server, owner-scoped, not from browser
+ * storage.
+ *
+ * They used to live in sessionStorage. That survived a remount and a refresh,
+ * but it belonged to the *tab* rather than to an account: signing out left the
+ * previous reviewer's reports — title, query, full body, sources — sitting there
+ * for whoever signed in next. And since a run costs real credits and takes
+ * minutes, tab-scoped state also meant signing out lost work already paid for.
+ *
+ * Reading them from `/api/deepresearch?mine=1` fixes both: the list follows the
+ * account, so it survives sign-out, a reload and a different machine, and it can
+ * never be read by the wrong one.
+ */
+async function fetchDrTasks(): Promise<DrTask[]> {
+  const r = await fetch("/api/deepresearch?mine=1", { headers: await authorizedHeaders() });
+  if (!r.ok) return [];
+  const data = await r.json();
+  const rows: unknown[] = Array.isArray(data.tasks) ? data.tasks : [];
+  return rows.map((row) => {
+    const t = row as Record<string, unknown>;
+    return {
+      taskId: String(t.task_id),
+      kind: t.kind as DrTask["kind"],
+      input: String(t.input ?? ""),
+      feature: String(t.feature ?? ""),
+      dataset: String(t.dataset ?? ""),
+      status: String(t.status ?? "queued"),
+      title: (t.title as string | null) ?? null,
+      output: (t.output as string | null) ?? null,
+      sources: Array.isArray(t.sources) ? (t.sources as DrTask["sources"]) : [],
+      error: (t.error as string | null) ?? null,
+      startedAt: t.created_at ? new Date(String(t.created_at)).getTime() : Date.now(),
+    };
+  });
 }
 
 /**
@@ -73,9 +97,16 @@ export function Workspace({
 
   const [view, setView] = useState<View>(initialView);
   const [dossierDrug, setDossierDrug] = useState("");
-  const [autoDrug, setAutoDrug] = useState<string | undefined>();
+
+  /** Whose tasks are on screen. Drives the load below and gates polling — in
+   *  self-hosted mode there is no session, so it stays null and never gates. */
+  const authSub = useAuthStore((s) => s.user?.id ?? null);
 
   const [drTasks, setDrTasks] = useState<DrTask[]>([]);
+  // One task list, split by the tab that owns each kind. Polling, persistence
+  // and toasts stay on the whole list — only the rendering is partitioned.
+  const dossierTasks = drTasks.filter((t) => t.kind === "dossier");
+  const researchTasks = drTasks.filter((t) => t.kind !== "dossier");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -104,21 +135,53 @@ export function Workspace({
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 9000);
   }, []);
 
-  // Rehydrate DR tasks once on mount (client-only, so it can't desync SSR).
+  /**
+   * Reports that landed while the reviewer was looking at another tab.
+   *
+   * A toast is only seen by someone already on the page, and these runs take
+   * minutes — the whole point is that you go and do something else. The count
+   * goes in the document title, which is the one piece of the app still visible
+   * from another tab.
+   */
+  const [unseen, setUnseen] = useState(0);
+
   useEffect(() => {
-    const stored = loadDrTasks();
-    if (stored.length) setDrTasks(stored);
+    document.title = unseen > 0 ? `(${unseen}) ${BASE_TITLE}` : BASE_TITLE;
+  }, [unseen]);
+
+  // Coming back to the tab is the acknowledgement — no dismiss to hunt for.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setUnseen(0);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  // Mirror DR tasks to sessionStorage so a route change or refresh keeps them.
+  /**
+   * Load this account's DR tasks, and reload them whenever the account changes.
+   *
+   * Keyed on the signed-in subject rather than running once on mount: signing
+   * out must empty the list, and signing in as someone else must replace it
+   * rather than inherit whatever the last session left on screen.
+   */
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      sessionStorage.setItem(DR_STORAGE_KEY, JSON.stringify(drTasks));
-    } catch {
-      /* private mode / quota — polling still works this session */
+    if (isValyuMode() && !authSub) {
+      setDrTasks([]);
+      return;
     }
-  }, [drTasks]);
+    let live = true;
+    void fetchDrTasks()
+      .then((tasks) => {
+        if (live) setDrTasks(tasks);
+      })
+      .catch(() => {
+        /* a failed load is an empty list, not a broken tab */
+      });
+    return () => {
+      live = false;
+    };
+  }, [authSub]);
 
   /** Fetch a saved review into the Review tab. Used on mount for /review/[id]. */
   const loadReview = useCallback(async (id: string) => {
@@ -154,16 +217,51 @@ export function Workspace({
     [router],
   );
 
+  /* Prefills the dossier tab from a review and hands over — deliberately not
+     auto-starting. A dossier is now a DeepResearch run against the reviewer's
+     own Valyu credits, so the spend stays behind an explicit click. */
   function generateDossierFor(drug: string) {
     setDossierDrug(drug);
-    setAutoDrug(drug);
     setView("dossier");
   }
 
   const startDr = useCallback(
     async (kind: DrKind, input: string) => {
       if (!input.trim()) return;
-      setView("research");
+      // Each kind is listed by the tab that starts it. Sending a dossier run to
+      // the Research tab moved the reviewer away from the page they were working
+      // on, to a list where their dossier sat among unrelated lookups.
+      setView(kind === "dossier" ? "dossier" : "research");
+
+      /**
+       * Show the run before it exists.
+       *
+       * Creating the task is a couple of seconds of round trip to Valyu, and
+       * until it returned there was nothing on screen — the reviewer landed on a
+       * list that said "no tasks yet" while their task was being created, which
+       * reads as a click that did nothing. This row stands in until the real id
+       * arrives, and is replaced or removed by the outcome. taskId stays empty so
+       * the poller skips it.
+       */
+      const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setDrTasks((prev) => [
+        {
+          taskId: "",
+          localId,
+          kind,
+          input,
+          feature: "",
+          dataset: DR_SOURCE[kind],
+          status: "starting",
+          title: null,
+          output: null,
+          sources: [],
+          error: null,
+          startedAt: Date.now(),
+        },
+        ...prev,
+      ]);
+
       try {
         const headers = await authorizedHeaders({ "Content-Type": "application/json" });
         const r = await fetch("/api/deepresearch", {
@@ -178,23 +276,31 @@ export function Workspace({
           }
           throw new Error(data.error || "Failed to start deep research.");
         }
-        setDrTasks((prev) => [
-          {
-            taskId: data.taskId,
-            kind,
-            input,
-            feature: data.feature,
-            dataset: data.dataset,
-            status: data.status || "queued",
-            title: null,
-            output: null,
-            sources: [],
-            error: null,
-            startedAt: Date.now(),
-          },
-          ...prev,
-        ]);
+        // Swap the placeholder for the real task, in place, so the card the
+        // reviewer is already looking at simply gains its id and starts polling.
+        setDrTasks((prev) =>
+          prev.map((t) =>
+            t.localId === localId
+              ? {
+                  taskId: data.taskId,
+                  kind,
+                  input,
+                  feature: data.feature,
+                  dataset: data.dataset,
+                  status: data.status || "queued",
+                  title: null,
+                  output: null,
+                  sources: [],
+                  error: null,
+                  startedAt: Date.now(),
+                }
+              : t,
+          ),
+        );
       } catch (e) {
+        // The run never started, so the placeholder must go — leaving it would
+        // show a task that will never finish and can never be polled.
+        setDrTasks((prev) => prev.filter((t) => t.localId !== localId));
         pushToast({
           title: "Couldn't start deep research",
           sub: e instanceof Error ? e.message : undefined,
@@ -206,6 +312,11 @@ export function Workspace({
 
   // Poll in-flight tasks; announce completion wherever the reviewer is.
   useEffect(() => {
+    // A signed-out poll has no token, so every request 401s — and the handler
+    // below swallows failures to survive a blip, which turned that into a silent
+    // retry every 4s forever. The task itself keeps running on Valyu and is
+    // picked up again from the server on the next sign-in.
+    if (isValyuMode() && !authSub) return;
     const pending = drTasks.filter((t) => t.taskId && !isDone(t.status));
     if (pending.length === 0) return;
 
@@ -235,12 +346,34 @@ export function Workspace({
           );
 
           if (isDone(s.status)) {
+            // Only when they're not here to see the toast — otherwise a badge
+            // would sit there counting things the reviewer just watched arrive.
+            if (document.visibilityState !== "visible") setUnseen((n) => n + 1);
+
+            // Reaches a reviewer who has left the browser entirely. Self-gates
+            // on permission and on the tab being hidden, so it stays quiet for
+            // anyone who never opted in or is watching the page.
+            if (s.status === "completed") {
+              notifyReportReady({
+                title: `Deep research ready — ${DR_LABELS[t.kind]}`,
+                body: `“${t.input.slice(0, 80)}${t.input.length > 80 ? "…" : ""}”`,
+                tag: t.taskId,
+                onClick: () => setView(t.kind === "dossier" ? "dossier" : "research"),
+              });
+            }
+
             pushToast(
               s.status === "completed"
                 ? {
                     title: `Deep research ready — ${DR_LABELS[t.kind]}`,
                     sub: `“${t.input.slice(0, 56)}${t.input.length > 56 ? "…" : ""}”`,
-                    action: { label: "View", run: () => setView("research") },
+                    // To the tab that lists this kind — a dossier is on the
+                    // Dossier tab, so sending "View" to Research would land the
+                    // reviewer on a page where their finished report isn't.
+                    action: {
+                      label: "View",
+                      run: () => setView(t.kind === "dossier" ? "dossier" : "research"),
+                    },
                   }
                 : {
                     title: `Deep research ${s.status} — ${DR_LABELS[t.kind]}`,
@@ -254,9 +387,14 @@ export function Workspace({
       }
     }, 4000);
     return () => clearInterval(iv);
-  }, [drTasks, pushToast]);
+  }, [drTasks, pushToast, authSub]);
 
-  const runningCount = drTasks.filter((t) => !isDone(t.status)).length;
+  // Counted per tab, not globally: the dot means "there's work running in
+  // here", so a running dossier has to mark Dossier, not Research.
+  const running: Partial<Record<View, number>> = {
+    dossier: dossierTasks.filter((t) => !isDone(t.status)).length,
+    research: researchTasks.filter((t) => !isDone(t.status)).length,
+  };
 
   // Roving arrow-key navigation, per the tabs pattern.
   function onTabKey(e: React.KeyboardEvent, i: number) {
@@ -275,10 +413,9 @@ export function Workspace({
           <div className="brand">
             <h1>
               <Link href="/" className="brand-home" onClick={() => setView("review")}>
-                Valibra
+                OpenMLR
               </Link>
             </h1>
-            <span className="by">Open MLR · powered by Valyu</span>
           </div>
 
           <nav className="nav" role="tablist" aria-label="Workspace">
@@ -297,10 +434,10 @@ export function Workspace({
                 onKeyDown={(e) => onTabKey(e, i)}
               >
                 {t.label}
-                {t.id === "research" && runningCount > 0 && (
+                {(running[t.id] ?? 0) > 0 && (
                   <span
                     className="dot"
-                    aria-label={`${runningCount} task${runningCount === 1 ? "" : "s"} running`}
+                    aria-label={`${running[t.id]} task${running[t.id] === 1 ? "" : "s"} running`}
                   />
                 )}
               </button>
@@ -358,17 +495,28 @@ export function Workspace({
             <DossierView
               drug={dossierDrug}
               setDrug={setDossierDrug}
-              autoDrug={autoDrug}
               onStartDr={startDr}
+              tasks={dossierTasks}
             />
           </SignInGate>
         )}
         {view === "research" && (
           <SignInGate title="Sign in to run deep research">
-            <ResearchView tasks={drTasks} onStart={startDr} />
+            <ResearchView tasks={researchTasks} onStart={startDr} />
           </SignInGate>
         )}
       </main>
+
+      {/* The standing disclaimer. It belongs on every view, not just the review
+          output, because the whole product is a pre-check — anything it says is
+          an input to a qualified reviewer's judgement, never a substitute for
+          it. */}
+      <footer className="foot">
+        <p>
+          OpenMLR — powered by Valyu. Does not replace qualified MLR review or constitute legal,
+          regulatory or medical advice.
+        </p>
+      </footer>
 
       {/* Announced politely so a completion reaches a screen reader wherever the
           reviewer happens to be. */}

@@ -95,13 +95,12 @@ export function SignInModal() {
         </button>
 
         <div className="auth-modal-head">
-          <span className="mark" aria-hidden="true" />
           <h2 id="auth-modal-title">{prompt?.title ?? "Sign in with Valyu"}</h2>
         </div>
 
         <p className="auth-modal-lede">
           {prompt?.lede ??
-            "Valibra checks every claim against real biomedical evidence through Valyu."}
+            "OpenMLR checks every claim against real biomedical evidence through Valyu."}
         </p>
 
         {error && (
