@@ -221,16 +221,6 @@ export const MarketClaimSchema = z.object({
 });
 export type MarketClaim = z.infer<typeof MarketClaimSchema>;
 
-/** F18 — deep-research evidence dossier on a drug/molecule. */
-export const DossierSchema = z.object({
-  indication: z.string().describe("Approved indication(s) from the label. '' if unknown."),
-  efficacySummary: z.string().describe("Key efficacy evidence, grounded in the sources."),
-  safetySummary: z.string().describe("Safety profile: boxed warnings, key ADRs, signals."),
-  interactionsSummary: z.string().describe("Clinically important drug interactions."),
-  evidenceGaps: z.array(z.string()).describe("Where evidence is thin, dated, or absent."),
-});
-export type Dossier = z.infer<typeof DossierSchema>;
-
 /** Unified finding surfaced in the reviewer workspace. */
 export type FindingCategory =
   | "substantiation"

@@ -2,18 +2,18 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: valibra
-      POSTGRES_PASSWORD: valibra
-      POSTGRES_DB: valibra
+      POSTGRES_USER: openmlr
+      POSTGRES_PASSWORD: openmlr
+      POSTGRES_DB: openmlr
     ports:
       - "5432:5432"
     volumes:
-      - valibra_pgdata:/var/lib/postgresql/data
+      - openmlr_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U valibra"]
+      test: ["CMD-SHELL", "pg_isready -U openmlr"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
-  valibra_pgdata:
+  openmlr_pgdata:

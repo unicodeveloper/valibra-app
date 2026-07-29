@@ -7,7 +7,7 @@ const SOCIAL_IMAGE = {
   url: "/opengraph-image",
   width: 1200,
   height: 630,
-  alt: "Valibra — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.",
+  alt: "OpenMLR — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.",
   type: "image/png",
 };
 
@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     alternates: { canonical: reviewPath },
     openGraph: {
       type: "website",
-      siteName: "Valibra",
-      title: "Valibra review",
+      siteName: "OpenMLR",
+      title: "OpenMLR review",
       description: DESCRIPTION,
       url: reviewPath,
       locale: "en_US",
@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     },
     twitter: {
       card: "summary_large_image",
-      title: "Valibra review",
+      title: "OpenMLR review",
       description: DESCRIPTION,
       images: [SOCIAL_IMAGE],
     },

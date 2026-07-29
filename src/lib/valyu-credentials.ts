@@ -345,6 +345,8 @@ export interface DeepResearchCreateOptions {
   query: string;
   mode?: string;
   search?: { searchType?: "all" | "web" | "proprietary" };
+  /** Valyu emails this address when the task finishes. */
+  alertEmail?: string;
 }
 
 /**
@@ -367,6 +369,8 @@ export async function valyuDeepResearchCreate(
   if (options.search?.searchType !== undefined) {
     payload.search = { search_type: options.search.searchType };
   }
+  // Same camelCase→snake_case rewrite the SDK does internally.
+  if (options.alertEmail !== undefined) payload.alert_email = options.alertEmail;
 
   return viaProxy(credential.accessToken, "/v1/deepresearch/tasks", "POST", payload);
 }

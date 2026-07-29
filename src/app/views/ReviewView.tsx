@@ -1069,19 +1069,22 @@ function Compose({
       <header className="compose-head">
         <h2>Check every claim against the evidence</h2>
         <p className="compose-lede">
-          Valibra extracts each promotional claim and tests it against approved labelling, trial
-          records and the peer-reviewed literature. Every finding cites its source, for you to
-          accept or reject.
+          OpenMLR tests each promotional claim against approved labelling, trial records and the
+          literature — every finding cites its source, for you to accept or reject.
         </p>
-        <ul className="compose-trust">
-          <li>Grounded in licensed evidence</li>
-          <li>Every finding cites its source</li>
-          <li>Open source · MIT</li>
-        </ul>
-        <button type="button" className="see-sample" onClick={onSeeSample}>
-          See a completed review — no sign-up
-          <span aria-hidden="true"> →</span>
-        </button>
+        {/* Chips and the sample link share a row: two stacked rows of secondary
+            detail was most of what pushed the landing past one screen. */}
+        <div className="compose-meta">
+          <ul className="compose-trust">
+            <li>Grounded in licensed evidence</li>
+            <li>Every finding cites its source</li>
+            <li>Open source · MIT</li>
+          </ul>
+          <button type="button" className="see-sample" onClick={onSeeSample}>
+            See a completed review — no sign-up
+            <span aria-hidden="true"> →</span>
+          </button>
+        </div>
       </header>
 
       {notice && <div className="compose-notice">{notice}</div>}

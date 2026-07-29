@@ -1,18 +1,41 @@
 "use client";
 
-import { Markdown } from "../components/Markdown";
-import { useEffect, useState } from "react";
-import { DR_LABELS, DR_PLACEHOLDER, DR_SOURCE, isDone, type DrKind, type DrTask } from "../dr";
+import { useState } from "react";
+import { DrTaskList } from "../components/DrTaskList";
+import { NotifyOptIn } from "../components/NotifyOptIn";
+import { DR_LABELS, DR_PLACEHOLDER, DR_SOURCE, type DrKind, type DrTask } from "../dr";
+
+/**
+ * The four targeted DeepResearch lookups. The dossier is a DR kind too, but it
+ * has its own tab — it's a different job (one drug, every dataset, minutes and
+ * real credits) and listing it here as a fifth dropdown entry made it the one
+ * expensive run you could start without meaning to.
+ */
+const KINDS = (Object.keys(DR_LABELS) as DrKind[]).filter((k) => k !== "dossier");
 
 export function ResearchView({
   tasks,
   onStart,
 }: {
   tasks: DrTask[];
-  onStart: (kind: DrKind, input: string) => void;
+  onStart: (kind: DrKind, input: string) => Promise<void>;
 }) {
   const [kind, setKind] = useState<DrKind>("device");
   const [input, setInput] = useState("");
+  /** Creating the task is a couple of seconds of round trip to Valyu; without
+   *  feedback the button reads as dead and invites a second, billable click. */
+  const [starting, setStarting] = useState(false);
+
+  const run = async () => {
+    if (!input.trim() || starting) return;
+    setStarting(true);
+    try {
+      await onStart(kind, input);
+      setInput("");
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <div className="wrap narrow">
@@ -20,8 +43,8 @@ export function ResearchView({
         <h2 className="view-t">Deep research</h2>
         <p className="view-sub">
           For checks whose authoritative source is a DeepResearch-only Valyu dataset: FDA Device
-          Events (MAUDE), the NPI Registry, WHO ICD, CDC surveillance and BindingDB. These run
-          async over a few minutes; keep working and you&apos;ll be notified when a report lands.
+          Events (MAUDE), the NPI Registry, WHO ICD and CDC surveillance. These run async over a
+          few minutes; keep working and you&apos;ll be notified when a report lands.
         </p>
       </header>
 
@@ -35,7 +58,7 @@ export function ResearchView({
             onChange={(e) => setKind(e.target.value as DrKind)}
             style={{ maxWidth: 210 }}
           >
-            {(Object.keys(DR_LABELS) as DrKind[]).map((k) => (
+            {KINDS.map((k) => (
               <option key={k} value={k}>
                 {DR_LABELS[k]}
               </option>
@@ -48,25 +71,28 @@ export function ResearchView({
             aria-label={`Input for ${DR_LABELS[kind]}`}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && input.trim()) {
-                onStart(kind, input);
-                setInput("");
-              }
+              if (e.key === "Enter") void run();
             }}
-            style={{ maxWidth: 300 }}
+            disabled={starting}
+            style={{ flex: 1, minWidth: 220 }}
           />
-          <button
-            onClick={() => {
-              onStart(kind, input);
-              setInput("");
-            }}
-            disabled={!input.trim()}
-          >
-            Run
+          <button onClick={() => void run()} disabled={!input.trim() || starting}>
+            {starting ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                Starting…
+              </>
+            ) : (
+              "Run"
+            )}
           </button>
           <span className="hint" style={{ marginLeft: "auto" }}>
             {DR_SOURCE[kind]}
           </span>
+        </div>
+
+        <div className="row" style={{ marginTop: 10 }}>
+          <NotifyOptIn />
         </div>
       </div>
 
@@ -82,100 +108,8 @@ export function ResearchView({
           </p>
         </div>
       ) : (
-        <div style={{ marginTop: 18 }}>
-          {tasks.map((t) => (
-            <DrCard key={t.taskId || t.input} task={t} />
-          ))}
-        </div>
+        <DrTaskList tasks={tasks} />
       )}
     </div>
   );
-}
-
-function DrCard({ task: t }: { task: DrTask }) {
-  const done = isDone(t.status);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    if (done) return;
-    const iv = setInterval(() => setElapsed(Math.floor((Date.now() - t.startedAt) / 1000)), 1000);
-    return () => clearInterval(iv);
-  }, [done, t.startedAt]);
-
-  const mins = Math.floor(elapsed / 60);
-  const elapsedTxt = mins > 0 ? `${mins}m ${elapsed % 60}s` : `${elapsed}s`;
-
-  return (
-    <div className="dr-card">
-      <div className="dr-top">
-        <div style={{ minWidth: 0 }}>
-          <h3 className="dr-title">{t.title || DR_LABELS[t.kind]}</h3>
-          <div className="dr-meta">
-            <span className={`st ${done ? t.status : "run"}`}>
-              {!done && <span className="sp" aria-hidden="true" />}
-              {done ? t.status : t.status || "running"}
-            </span>
-            <span className="tag">{t.dataset || DR_SOURCE[t.kind]}</span>
-            {!done && <span className="hint">{elapsedTxt} elapsed</span>}
-          </div>
-          <p className="hint" style={{ marginTop: 6 }}>
-            “{t.input}”
-          </p>
-        </div>
-      </div>
-
-      {!done && (
-        <p className="hint" style={{ marginTop: 10 }}>
-          Running on Valyu DeepResearch. This can take a few minutes — you can navigate away and
-          you&apos;ll be notified when it&apos;s ready.
-        </p>
-      )}
-
-      {t.error && (
-        <p className="err" style={{ marginTop: 10 }}>
-          <span aria-hidden="true">▲</span> {t.error}
-        </p>
-      )}
-
-      {t.output && (
-        <div className="dsec" style={{ marginTop: 8 }}>
-          <div className="body">
-            <Markdown>{t.output}</Markdown>
-          </div>
-        </div>
-      )}
-
-      {t.sources.length > 0 && (
-        <div className="dsec">
-          <h3>Sources</h3>
-          <div className="sources">
-            {t.sources.map((s, i) =>
-              s.url ? (
-                <a
-                  key={i}
-                  className="src-chip"
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={s.title || s.url}
-                >
-                  <span className="n">{i + 1}</span>
-                  {truncate(s.title || s.url, 44)}
-                </a>
-              ) : (
-                <span key={i} className="src-chip" title={s.title}>
-                  <span className="n">{i + 1}</span>
-                  {truncate(s.title, 44)}
-                </span>
-              ),
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function truncate(s: string, n: number) {
-  return s.length > n ? s.slice(0, n).trimEnd() + "…" : s;
 }

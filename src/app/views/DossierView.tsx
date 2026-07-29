@@ -1,72 +1,45 @@
 "use client";
 
-import { Markdown } from "../components/Markdown";
-import { useEffect, useRef, useState } from "react";
-import type { Dossier } from "@/lib/schemas";
-import { datasetLabel } from "../review-model";
-import type { DrKind } from "../dr";
-import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
+import { useState } from "react";
+import { DrTaskList } from "../components/DrTaskList";
+import { NotifyOptIn } from "../components/NotifyOptIn";
+import type { DrKind, DrTask } from "../dr";
 
-interface DossierResp {
-  drug: string;
-  dossier: Dossier;
-  sources: { title: string; url: string; source: string }[];
-  error: string | null;
-}
-
+/**
+ * Dossiers are DeepResearch runs, so they're async — but they belong here, not
+ * in the Research tab. A tab that starts work it can never show is a dead end:
+ * it navigated the reviewer away from itself and left a permanent empty state
+ * pointing somewhere else.
+ */
 export function DossierView({
   drug,
   setDrug,
-  autoDrug,
   onStartDr,
+  tasks,
 }: {
   drug: string;
   setDrug: (s: string) => void;
-  autoDrug?: string;
-  onStartDr: (kind: DrKind, input: string) => void;
+  onStartDr: (kind: DrKind, input: string) => Promise<void>;
+  /** Dossier runs only — the Workspace filters before handing them over. */
+  tasks: DrTask[];
 }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [resp, setResp] = useState<DossierResp | null>(null);
-  const ranFor = useRef<string | null>(null);
+  /**
+   * Creating the task is a round trip to Valyu and takes a couple of seconds.
+   * Without this the button sat inert the whole time and the page did nothing —
+   * long enough to read as broken and to invite a second click, which would
+   * start (and bill) a second run.
+   */
+  const [starting, setStarting] = useState(false);
 
-  async function generate(d: string) {
-    if (!d.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResp(null);
+  const start = async () => {
+    if (!drug.trim() || starting) return;
+    setStarting(true);
     try {
-      const headers = await authorizedHeaders({ "Content-Type": "application/json" });
-      const r = await fetch("/api/dossier", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ drug: d }),
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        if (handleAuthFailure(r.status, data)) {
-          setError("Please sign in with Valyu to generate a dossier.");
-          return;
-        }
-        throw new Error(data.error || "Dossier failed.");
-      }
-      setResp(data as DossierResp);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Dossier failed.");
+      await onStartDr("dossier", drug);
     } finally {
-      setLoading(false);
+      setStarting(false);
     }
-  }
-
-  // Auto-generate when handed a drug from a review. Guarded by ref rather than
-  // a remount key so a re-render can never re-fire the request.
-  useEffect(() => {
-    if (autoDrug && ranFor.current !== autoDrug) {
-      ranFor.current = autoDrug;
-      void generate(autoDrug);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoDrug]);
+  };
 
   return (
     <div className="wrap narrow">
@@ -89,140 +62,52 @@ export function DossierView({
             value={drug}
             placeholder="e.g. rosuvastatin"
             onChange={(e) => setDrug(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && generate(drug)}
-            style={{ maxWidth: 300 }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void start();
+            }}
+            disabled={starting}
+            /* Fills the panel rather than sitting at a fixed 300px: the row is
+               the only content in a full-width panel, and a short box in a wide
+               pane reads as a mistake. minWidth keeps it usable once the row
+               wraps on a narrow screen. */
+            style={{ flex: 1, minWidth: 220 }}
           />
-          <button onClick={() => generate(drug)} disabled={loading || !drug.trim()}>
-            {loading ? "Compiling…" : "Quick dossier"}
+          <button onClick={() => void start()} disabled={!drug.trim() || starting}>
+            {starting ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                Starting…
+              </>
+            ) : (
+              "Deep dossier →"
+            )}
           </button>
-          <button
-            className="ghost"
-            onClick={() => onStartDr("dossier", drug)}
-            disabled={!drug.trim()}
-            title="Async DeepResearch across every dataset, including the DeepResearch-only BindingDB."
-          >
-            Deep dossier →
-          </button>
-          {resp && (
-            <button className="quiet" onClick={() => window.print()}>
-              Print / PDF
-            </button>
-          )}
         </div>
 
-        <div className="row" style={{ marginTop: 12, gap: 18, alignItems: "flex-start" }}>
-          <p className="hint" style={{ flex: 1, minWidth: 220, margin: 0 }}>
-            <strong style={{ color: "var(--ink-2)" }}>Quick dossier</strong> — real-time Search.
-            Indication, efficacy, safety, interactions and gaps, every statement drawn from a
-            retrieved Valyu source. Back in seconds.
+        <div className="row" style={{ marginTop: 12, gap: 14 }}>
+          <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
+            Async DeepResearch across every dataset, including BindingDB for target binding
+            affinity (F24). Takes a few minutes — you can keep working.
           </p>
-          <p className="hint" style={{ flex: 1, minWidth: 220, margin: 0 }}>
-            <strong style={{ color: "var(--ink-2)" }}>Deep dossier</strong> — async DeepResearch
-            across every dataset, including BindingDB for target binding affinity (F24). Lands in the
-            Research tab.
-          </p>
+          <NotifyOptIn />
         </div>
-
-        {error && (
-          <p className="err" style={{ marginTop: 12 }}>
-            <span aria-hidden="true">▲</span> {error}
-          </p>
-        )}
       </div>
 
-      {loading && <DossierSkeleton />}
-
-      {!loading && !resp && !error && (
+      {tasks.length === 0 ? (
         <div className="empty" style={{ marginTop: 18 }}>
           <div className="ico" aria-hidden="true">
             ⚗
           </div>
-          <h3>No dossier yet</h3>
+          <h3>No dossiers yet</h3>
           <p>
             Enter a drug or molecule to compile an evidence dossier grounded in ClinicalTrials,
-            PubMed, DailyMed, Open Targets and ChEMBL — or run one straight from a review.
+            PubMed, DailyMed, Open Targets, ChEMBL and BindingDB — or start one straight from a
+            review. It runs in the background and lands here.
           </p>
         </div>
+      ) : (
+        <DrTaskList tasks={tasks} />
       )}
-
-      {resp && <DossierReport resp={resp} />}
-    </div>
-  );
-}
-
-function DossierReport({ resp }: { resp: DossierResp }) {
-  const d = resp.dossier;
-  const sec = (title: string, body: string) =>
-    body ? (
-      <section className="dsec">
-        <h3>{title}</h3>
-        <div className="body">
-          <Markdown>{body}</Markdown>
-        </div>
-      </section>
-    ) : null;
-
-  return (
-    <article className="report" style={{ marginTop: 18 }}>
-      <h2 className="r-title">{resp.drug}</h2>
-      <p className="r-sub">
-        Evidence dossier · grounded in {resp.sources.length} Valyu source
-        {resp.sources.length === 1 ? "" : "s"} · {new Date().toISOString().slice(0, 10)}
-      </p>
-
-      {sec("Indication", d.indication)}
-      {sec("Efficacy", d.efficacySummary)}
-      {sec("Safety", d.safetySummary)}
-      {sec("Interactions", d.interactionsSummary)}
-
-      {d.evidenceGaps.length > 0 && (
-        <section className="dsec">
-          <h3>Evidence gaps</h3>
-          <ul className="gaps">
-            {d.evidenceGaps.map((g, i) => (
-              <li key={i}>{g}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {resp.sources.length > 0 && (
-        <section className="dsec">
-          <h3>Sources</h3>
-          <div className="sources">
-            {resp.sources.map((s, i) =>
-              s.url ? (
-                <a key={i} className="src-chip" href={s.url} target="_blank" rel="noreferrer" title={s.title}>
-                  <span className="n">{i + 1}</span>
-                  {datasetLabel(s.source)}
-                </a>
-              ) : (
-                <span key={i} className="src-chip" title={s.title}>
-                  <span className="n">{i + 1}</span>
-                  {datasetLabel(s.source)}
-                </span>
-              ),
-            )}
-          </div>
-        </section>
-      )}
-    </article>
-  );
-}
-
-function DossierSkeleton() {
-  return (
-    <div className="report" style={{ marginTop: 18 }} aria-hidden="true">
-      <div className="sk" style={{ height: 26, width: "42%", marginBottom: 10 }} />
-      <div className="sk" style={{ height: 9, width: "62%", marginBottom: 26 }} />
-      {[1, 2, 3].map((i) => (
-        <div key={i} style={{ marginBottom: 22 }}>
-          <div className="sk" style={{ height: 8, width: 78, marginBottom: 10 }} />
-          <div className="sk" style={{ height: 10, width: "100%", marginBottom: 6 }} />
-          <div className="sk" style={{ height: 10, width: "96%", marginBottom: 6 }} />
-          <div className="sk" style={{ height: 10, width: "58%" }} />
-        </div>
-      ))}
     </div>
   );
 }

@@ -33,9 +33,9 @@ function base64URLEncode(buffer: Uint8Array): string {
 
 /** localStorage keys for the in-flight authorization request. */
 export const OAUTH_KEYS = {
-  verifier: "valibra_oauth_code_verifier",
-  state: "valibra_oauth_state",
-  timestamp: "valibra_oauth_timestamp",
+  verifier: "openmlr_oauth_code_verifier",
+  state: "openmlr_oauth_state",
+  timestamp: "openmlr_oauth_timestamp",
 } as const;
 
 /** Drop every trace of an in-flight authorization request. */

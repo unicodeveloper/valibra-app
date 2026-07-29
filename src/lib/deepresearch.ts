@@ -108,8 +108,23 @@ export interface DrCreateResult {
   dataset: string;
 }
 
-/** Kick off a DeepResearch task for a DR-only feature. Returns immediately. */
-export async function createDeepResearch(kind: DrKind, input: string): Promise<DrCreateResult> {
+/**
+ * Kick off a DeepResearch task for a DR-only feature. Returns immediately.
+ *
+ * `alertEmail` is Valyu's own completion notification, and it is the only thing
+ * here that reaches a reviewer who has closed the tab. The alternative — a
+ * background job polling for them — can't work in valyu mode: a task created
+ * through the OAuth proxy belongs to the reviewer's Valyu account, so the
+ * deployment's own key cannot read its status (verified: it answers "Not
+ * authorized to modify this task"), and polling on their behalf would mean
+ * storing refresh tokens server-side. Handing Valyu the address avoids all of
+ * that, and avoids this app needing a mail provider at all.
+ */
+export async function createDeepResearch(
+  kind: DrKind,
+  input: string,
+  alertEmail?: string | null,
+): Promise<DrCreateResult> {
   const spec = DR_KINDS[kind];
   const res: any = await valyuDeepResearchCreate({
     query: spec.buildQuery(input),
@@ -117,6 +132,7 @@ export async function createDeepResearch(kind: DrKind, input: string): Promise<D
     // reaches the DR-only datasets (MAUDE / NPI / WHO ICD / BindingDB) at all.
     mode: spec.mode,
     search: { searchType: "all" },
+    ...(alertEmail ? { alertEmail } : {}),
   });
   return {
     taskId: res?.deepresearch_id ?? "",

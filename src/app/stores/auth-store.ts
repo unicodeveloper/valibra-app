@@ -14,8 +14,11 @@ import { create } from "zustand";
  * getAccessToken().
  */
 
-const TOKEN_STORAGE_KEY = "valibra_valyu_tokens";
-const USER_STORAGE_KEY = "valibra_valyu_user";
+const TOKEN_STORAGE_KEY = "openmlr_valyu_tokens";
+const USER_STORAGE_KEY = "openmlr_valyu_user";
+/** Retired: DeepResearch tasks moved to owner-scoped server storage. Kept only
+ *  so sign-out can clear it out of tabs that still carry the old cache. */
+const LEGACY_DR_TASKS_KEY = "openmlr_dr_tasks";
 
 /** Treat a token as expired 30s early, so it can't die mid-request. */
 const EXPIRY_BUFFER_MS = 30_000;
@@ -109,6 +112,10 @@ function clearStored(): void {
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(USER_STORAGE_KEY);
+    // DeepResearch tasks are server-side and owner-scoped now, but a tab open
+    // from before that change may still hold the old cache — full report bodies
+    // and sources, readable by whoever signs in next. Purge it on the way out.
+    sessionStorage.removeItem(LEGACY_DR_TASKS_KEY);
   } catch {
     /* nothing useful to do */
   }
@@ -116,6 +123,22 @@ function clearStored(): void {
 
 function isTokenExpired(expiresAt: number): boolean {
   return Date.now() >= expiresAt - EXPIRY_BUFFER_MS;
+}
+
+/**
+ * Resolve this token's identity on the server now, so the first History or
+ * Library click doesn't pay the ~250ms Valyu userinfo round trip.
+ *
+ * Fire-and-forget by design: nothing renders off the result, so a failure here
+ * must be invisible — the request that actually needs the identity will resolve
+ * it (or surface the auth error) on its own. Keyed by token server-side, which
+ * is why a refresh re-warms: a new access token is a new cache entry.
+ */
+function warmIdentity(accessToken: string | null | undefined): void {
+  if (typeof window === "undefined" || !accessToken) return;
+  void fetch("/api/session", { headers: { Authorization: `Bearer ${accessToken}` } }).catch(
+    () => {},
+  );
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
@@ -170,7 +193,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           isLoading: false,
           initialized: true,
         });
+        // An expired token is about to be swapped for a new one, and the new one
+        // is what needs warming — refreshAccessToken does that itself.
         if (expired) void get().refreshAccessToken();
+        else warmIdentity(tokens.accessToken);
         return;
       }
     }
@@ -208,6 +234,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isLoading: false,
       initialized: true,
     });
+
+    warmIdentity(tokens.accessToken);
   },
 
   signOut: () => {
@@ -290,6 +318,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         tokenExpiresAt: expiresAt,
         isAuthenticated: true,
       });
+
+      // New token, new server-side cache key — the old warm entry is dead.
+      warmIdentity(access_token);
 
       return access_token;
     } catch (error) {
