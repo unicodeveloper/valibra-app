@@ -16,6 +16,9 @@
  * Usage: npm run dev:reset-trial
  */
 import postgres from "postgres";
+import { loadEnvLocal } from "./load-env-local.mjs";
+
+loadEnvLocal();
 
 const url = process.env.DATABASE_URL;
 if (!url) {
