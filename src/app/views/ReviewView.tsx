@@ -579,26 +579,26 @@ export function ReviewView({
       (f) => decisions[f.id] === "revision" || decisions[f.id] === "rejected",
     );
     const L: string[] = [
-      `# Revision request — ${result.assetName}`,
+      `# Revision request: ${result.assetName}`,
       "",
-      `Product: ${result.drugName || "—"}  ·  Generated: ${new Date().toLocaleString()}`,
+      `Product: ${result.drugName || "n/a"}  ·  Generated: ${new Date().toLocaleString()}`,
       `${items.length} change${items.length === 1 ? "" : "s"} requested.`,
       "",
     ];
     if (items.length === 0) {
-      L.push("_No changes requested — every finding was accepted or left undecided._");
+      L.push("_No changes requested. Every finding was accepted or left undecided._");
     }
     items.forEach((f, i) => {
       const note = notes[f.id] ?? {};
       const verb = decisions[f.id] === "rejected" ? "Remove" : "Revise";
       const cite = f.evidence[0];
-      L.push(`## ${i + 1}. ${verb} — ${CATEGORY_LABEL[f.category] ?? f.category}`);
+      L.push(`## ${i + 1}. ${verb}: ${CATEGORY_LABEL[f.category] ?? f.category}`);
       L.push("");
-      L.push(`**Claim:** ${f.claimText ?? "—"}`);
-      L.push(`**Finding:** ${f.headline}${f.detail ? ` — ${f.detail}` : ""}`);
+      L.push(`**Claim:** ${f.claimText ?? "n/a"}`);
+      L.push(`**Finding:** ${f.headline}${f.detail ? `. ${f.detail}` : ""}`);
       if (note.rationale) L.push(`**Reason:** ${note.rationale}`);
       if (note.suggestedRevision) L.push(`**Suggested revision:** ${note.suggestedRevision}`);
-      if (cite) L.push(`**Source:** ${cite.title}${cite.url ? ` — ${cite.url}` : ""}`);
+      if (cite) L.push(`**Source:** ${cite.title}${cite.url ? `: ${cite.url}` : ""}`);
       L.push("");
     });
     downloadText(`revision-request-${result.reviewId.slice(0, 8)}.md`, L.join("\n"));
@@ -736,7 +736,7 @@ export function ReviewView({
                   <div>
                     <p className="b-t">Saved to your library</p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
-                      Your review is in your account — reopen it any time from History.
+                      Your review is in your account. Reopen it any time from History.
                     </p>
                   </div>
                 </div>
@@ -747,8 +747,8 @@ export function ReviewView({
                   <div>
                     <p className="b-t">This is a sample review</p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
-                      A real, fully-cited review of a sample asset — every finding below links to its
-                      source. Paste your own asset to run one free.
+                      A fully cited review of a sample asset. Every finding below links to its source.
+                      Paste your own asset to run one free.
                     </p>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button
@@ -798,7 +798,7 @@ export function ReviewView({
                 <div className="banner crit" role="alert">
                   <span aria-hidden="true">▲</span>
                   <div>
-                    <p className="b-t">Out of Valyu credits — this review is incomplete</p>
+                    <p className="b-t">Out of Valyu credits. This review is incomplete</p>
                     <p style={{ margin: "0 0 4px", color: "var(--ink-2)", fontSize: 12.5 }}>
                       Evidence retrieval stopped partway through, so the remaining searches were
                       skipped rather than run. Any <strong>&ldquo;no evidence&rdquo;</strong> verdict
@@ -821,7 +821,7 @@ export function ReviewView({
                 <div className="banner crit" role="alert">
                   <span aria-hidden="true">▲</span>
                   <div>
-                    <p className="b-t">Nothing was verified — do not sign off on this</p>
+                    <p className="b-t">Nothing was verified. Do not sign off on this</p>
                     <p style={{ margin: "0 0 4px", color: "var(--ink-2)", fontSize: 12.5 }}>
                       Evidence retrieval failed for every claim, so this run has{" "}
                       <strong>zero sources behind it</strong>. The findings below are the pipeline
@@ -859,7 +859,7 @@ export function ReviewView({
                   <div>
                     <p className="b-t">
                       {persistOff
-                        ? "Persistence is off — decisions live in this tab only"
+                        ? "Persistence is off. Decisions live in this tab only"
                         : `${unsaved} decision${unsaved === 1 ? "" : "s"} couldn't be saved`}
                     </p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
@@ -888,7 +888,7 @@ export function ReviewView({
                       {pendingCarry.length === 1 ? "" : "s"} in an earlier review
                     </p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
-                      Accept them on this review too — recorded as your decision in the audit trail.
+                      Accept them on this review too. This records your decision in the audit trail.
                     </p>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button className="sm" onClick={applyPreviousRulings}>
@@ -935,8 +935,8 @@ export function ReviewView({
                     Requires deep research
                   </p>
                   <p className="hint" style={{ marginBottom: 6 }}>
-                    These checks can only be answered by a DeepResearch-only dataset. They run async —
-                    you&apos;ll be notified when the report lands.
+                    These checks require a DeepResearch-only dataset. They run in the background.
+                    You&apos;ll be notified when the report lands.
                   </p>
                   {result.deepResearchRequired.map((d, i) => (
                     <div className="drreq-row" key={i}>
@@ -1036,7 +1036,7 @@ export function ReviewView({
                   Print / PDF
                 </button>
                 <span className="hint" style={{ marginLeft: "auto" }}>
-                  Decision support — not an autonomous regulatory determination.
+                  Decision support, not an autonomous regulatory determination.
                 </span>
               </div>
             </>
@@ -1082,8 +1082,8 @@ function Compose({
       <header className="compose-head">
         <h2>Check every claim against the evidence</h2>
         <p className="compose-lede">
-          OpenMLR tests each promotional claim against approved labelling, trial records and the
-          literature — every finding cites its source, for you to accept or reject.
+          OpenMLR tests each promotional claim against approved labelling, trial records and
+          literature. Every finding cites its source, so you can accept or reject it.
         </p>
         {/* Chips and the sample link share a row: two stacked rows of secondary
             detail was most of what pushed the landing past one screen. */}
@@ -1094,7 +1094,7 @@ function Compose({
             <li>Open source · MIT</li>
           </ul>
           <button type="button" className="see-sample" onClick={onSeeSample}>
-            See a completed review — no sign-up
+            See a completed review. No sign-up
             <span aria-hidden="true"> →</span>
           </button>
         </div>
@@ -1235,7 +1235,7 @@ function Verdict({
       ? `${counts.critical} critical issue${counts.critical === 1 ? "" : "s"}`
       : counts.warning > 0
         ? "No critical issues"
-        : "Clean — nothing flagged";
+        : "Clean. Nothing flagged";
 
   const sev: Severity = unchecked
     ? "warning"

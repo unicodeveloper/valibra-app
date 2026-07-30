@@ -5,7 +5,7 @@ import { usePersistenceStore } from "../stores/persistence-store";
 
 function when(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "Unknown";
   return d.toLocaleString(undefined, {
     year: "numeric",
     month: "short",
@@ -66,11 +66,11 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
         <div className="banner warn" style={{ marginTop: 14 }}>
           <span aria-hidden="true">●</span>
           <div>
-            <p className="b-t">Persistence is off — no history is being kept</p>
+            <p className="b-t">Persistence is off. No history is being kept</p>
             <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
               Start Postgres with <code>docker compose up -d</code> and set <code>DATABASE_URL</code>{" "}
-              to keep reviews and the decisions made on them. Reviews still run fine without it —
-              export the report to keep a record.
+              to keep reviews and the decisions made on them. Reviews still run fine without it.
+              Export the report to keep a record.
             </p>
           </div>
         </div>
@@ -113,7 +113,7 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
                       {r.asset_name}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }} data-label="Drug">
-                      {r.drug_name || "—"}
+                      {r.drug_name || "n/a"}
                     </td>
                     <td style={{ whiteSpace: "nowrap" }} data-label="Reviewed">
                       {when(r.created_at)}

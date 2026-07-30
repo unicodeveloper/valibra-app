@@ -53,11 +53,11 @@ const SuggestionSchema = z.object({
 
 const SYSTEM =
   "You help a Medical-Legal-Regulatory (MLR) reviewer turn a flagged promotional claim into an " +
-  "actionable fix for the content team. You are grounded and conservative — the same discipline as " +
+  "actionable fix for the content team. You are grounded and conservative, with the same discipline as " +
   "the rest of this tool:\n" +
   "- NEVER invent evidence, citations, statistics, or clinical facts. Use ONLY the provided evidence.\n" +
   "- If the evidence supports a narrower, compliant version of the claim, return kind='rewrite' with " +
-  "that wording — and nothing the evidence does not support.\n" +
+  "that wording, and nothing the evidence does not support.\n" +
   "- If the right fix is structural rather than a reword (add an omitted safety/risk statement, limit " +
   "an off-label claim to the approved indication, add a citation, or remove an unsupported claim), " +
   "return kind='instruction' with one concrete sentence.\n" +
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
   const f = parsed.data;
   const evidenceText = f.evidence.length
     ? f.evidence
-        .map((e, i) => `[${i + 1}] ${e.title}${e.snippet ? ` — ${e.snippet.slice(0, 600)}` : ""}`)
+        .map((e, i) => `[${i + 1}] ${e.title}${e.snippet ? `: ${e.snippet.slice(0, 600)}` : ""}`)
         .join("\n")
     : "(no supporting evidence was retrieved for this claim)";
 

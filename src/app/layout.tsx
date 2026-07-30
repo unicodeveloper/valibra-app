@@ -38,6 +38,7 @@ const mono = IBM_Plex_Mono({
  */
 const SITE_URL = (() => {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   try {
     if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
       return new URL(process.env.NEXT_PUBLIC_REDIRECT_URI).origin;
@@ -47,6 +48,11 @@ const SITE_URL = (() => {
   }
   return "http://localhost:3000";
 })();
+
+const LOGO_URL = new URL(
+  "/brand/openmlr-logo.png",
+  SITE_URL,
+).toString();
 
 /**
  * The X account to credit on the card, if there is one.
@@ -83,7 +89,7 @@ const SOCIAL_IMAGES = [
 /** Matches the hero on the landing page, so the tab, the search result and the
  *  first thing on screen all say the same thing. Declared once — it appears in
  *  the document title, the Open Graph card and the Twitter card. */
-const TITLE = "OpenMLR — Check every claim against the evidence";
+const TITLE = "OpenMLR: Check every claim against the evidence";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -111,6 +117,16 @@ export const metadata: Metadata = {
     "open source",
   ],
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/brand/openmlr-icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/openmlr-icon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/brand/openmlr-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/brand/openmlr-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/brand/openmlr-apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   /* Open Graph is the card Slack, LinkedIn, Discord, WhatsApp and iMessage all
      read. The first image is hosted externally; the second is the local static
      fallback in case the hosted copy is unavailable. */
@@ -234,6 +250,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <head>
+        <meta property="og:logo" content={LOGO_URL} />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         {/* JSON-LD, not microdata: it stays out of the markup the app renders,
             so nothing about the design can accidentally invalidate it. Safe to

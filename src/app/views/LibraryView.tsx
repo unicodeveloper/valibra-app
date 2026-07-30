@@ -10,7 +10,7 @@ import { usePersistenceStore } from "../stores/persistence-store";
 const STATUS_LABEL: Record<string, string> = {
   confirmed: "✓ reviewer-confirmed",
   provisional: "· awaiting review",
-  rejected: "▲ rejected — not reused",
+  rejected: "▲ rejected, not reused",
 };
 
 const VERDICT_GLYPH: Record<string, string> = {
@@ -124,7 +124,7 @@ export function LibraryView() {
         <div className="banner warn" style={{ marginTop: 14 }}>
           <span aria-hidden="true">●</span>
           <div>
-            <p className="b-t">Persistence is off — nothing is being saved</p>
+            <p className="b-t">Persistence is off. Nothing is being saved</p>
             <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
               Start Postgres with <code>docker compose up -d</code> and set <code>DATABASE_URL</code>{" "}
               to reuse substantiated claims across reviews. Reviews still run fine without it.
@@ -186,7 +186,7 @@ export function LibraryView() {
                     </span>
                   </td>
                   <td className="num" data-label="Confidence">
-                    {e.confidence != null ? Math.round(e.confidence * 100) + "%" : "—"}
+                    {e.confidence != null ? Math.round(e.confidence * 100) + "%" : "n/a"}
                   </td>
                 </tr>
               ))}
@@ -206,7 +206,7 @@ export function LibraryView() {
           <p>
             {q
               ? "Try a different drug, or clear the filter to see everything in the library."
-              : "Run a review — every substantiated claim is saved here, and future reviews reuse it instead of re-checking the same sentence."}
+              : "Run a review. Every substantiated claim is saved here, and future reviews reuse it instead of re-checking the same sentence."}
           </p>
         </div>
       )}

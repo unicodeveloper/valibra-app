@@ -31,12 +31,12 @@ export const SAMPLE_ASSETS: SampleAsset[] = [
     name: "Ozempic HCP detail aid",
     drug: "Ozempic (semaglutide)",
     hint: "Off-label weight-loss creep · omitted boxed warning · market claim",
-    text: `OZEMPIC (semaglutide) injection — Take control of your type 2 diabetes, once weekly
+    text: `OZEMPIC (semaglutide) injection: Take control of your type 2 diabetes, once weekly
 
 - OZEMPIC lowers A1C by up to 1.8% in adults with type 2 diabetes.
 - In a head-to-head trial, OZEMPIC reduced A1C more than dulaglutide (Trulicity).
-- OZEMPIC reduces the risk of major cardiovascular events — heart attack, stroke, and cardiovascular death — in adults with type 2 diabetes and established heart disease.
-- Patients lost significant weight on OZEMPIC — the #1 prescribed GLP-1 for weight loss.
+- OZEMPIC reduces the risk of major cardiovascular events, including heart attack, stroke, and cardiovascular death, in adults with type 2 diabetes and established heart disease.
+- Patients lost significant weight on OZEMPIC, the #1 prescribed GLP-1 for weight loss.
 - Once-weekly dosing you take on any day, with or without meals.
 - Generally well tolerated, so you can stay on track.
 
@@ -47,7 +47,7 @@ Ask your healthcare provider if OZEMPIC is right for you.`,
     name: "Humira RA sales aid",
     drug: "Humira (adalimumab)",
     hint: "Boxed-warning omission · unsupported safety · #1-biologic market claim",
-    text: `HUMIRA (adalimumab) — Proven relief across moderate-to-severe rheumatoid arthritis
+    text: `HUMIRA (adalimumab): Proven relief across moderate-to-severe rheumatoid arthritis
 
 - HUMIRA, with methotrexate, significantly reduces the signs and symptoms of moderate-to-severe rheumatoid arthritis and slows structural joint damage.
 - In clinical trials, up to twice as many patients achieved an ACR50 response versus methotrexate alone.
@@ -63,10 +63,10 @@ Talk to your doctor about starting HUMIRA today.`,
     name: "Keytruda NSCLC detail aid",
     drug: "Keytruda (pembrolizumab)",
     hint: "PD-L1 biomarker · MoA depth · first-in-class/IP · off-label breadth",
-    text: `KEYTRUDA (pembrolizumab) — Redefining survival in advanced non-small cell lung cancer
+    text: `KEYTRUDA (pembrolizumab): Redefining survival in advanced non-small cell lung cancer
 
 - In first-line metastatic NSCLC, KEYTRUDA plus chemotherapy significantly improved overall survival versus chemotherapy alone.
-- KEYTRUDA is the first-in-class PD-1 inhibitor — a breakthrough with no comparable alternative.
+- KEYTRUDA is the first-in-class PD-1 inhibitor, a breakthrough with no comparable alternative.
 - It works best in patients whose tumors express PD-L1, but delivers benefit across all comers regardless of biomarker status.
 - By blocking the PD-1 pathway, KEYTRUDA restores the immune system's ability to find and fight cancer cells.
 - Proven to extend life across dozens of tumor types.
@@ -79,7 +79,7 @@ Ask your oncologist about KEYTRUDA.`,
     name: "Eliquis AFib sales aid",
     drug: "Eliquis (apixaban)",
     hint: "Comparative vs warfarin (has H2H) · drug-interaction claim · boxed warning",
-    text: `ELIQUIS (apixaban) — Superior stroke protection for patients with atrial fibrillation
+    text: `ELIQUIS (apixaban): Superior stroke protection for patients with atrial fibrillation
 
 - In patients with nonvalvular atrial fibrillation, ELIQUIS reduced the risk of stroke and systemic embolism more than warfarin.
 - ELIQUIS also caused significantly less major bleeding than warfarin.

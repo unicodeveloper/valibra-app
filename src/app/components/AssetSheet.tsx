@@ -51,7 +51,7 @@ export function AssetSheet({
         {unanchored.length > 0 && (
           <p className="hint" style={{ marginTop: 20, fontFamily: "var(--font-sans)" }}>
             {unanchored.length} claim{unanchored.length === 1 ? "" : "s"} could not be located in the
-            text verbatim and {unanchored.length === 1 ? "is" : "are"} unmarked — see the findings
+            text verbatim and {unanchored.length === 1 ? "is" : "are"} unmarked. See the findings
             list.
           </p>
         )}

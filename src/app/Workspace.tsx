@@ -22,7 +22,7 @@ export type View = "review" | "history" | "library" | "dossier" | "research";
 
 /** Kept in step with the `title` in app/layout.tsx — the badge below rewrites
  *  document.title, so it needs the unbadged string to restore. */
-const BASE_TITLE = "OpenMLR — Check every claim against the evidence";
+const BASE_TITLE = "OpenMLR: Check every claim against the evidence";
 
 /**
  * Each tab has a real address.
@@ -424,7 +424,7 @@ export function Workspace({
             // anyone who never opted in or is watching the page.
             if (s.status === "completed") {
               notifyReportReady({
-                title: `Deep research ready — ${DR_LABELS[t.kind]}`,
+                title: `Deep research ready: ${DR_LABELS[t.kind]}`,
                 body: `“${t.input.slice(0, 80)}${t.input.length > 80 ? "…" : ""}”`,
                 tag: t.taskId,
                 onClick: () => setView(t.kind === "dossier" ? "dossier" : "research"),
@@ -434,7 +434,7 @@ export function Workspace({
             pushToast(
               s.status === "completed"
                 ? {
-                    title: `Deep research ready — ${DR_LABELS[t.kind]}`,
+                    title: `Deep research ready: ${DR_LABELS[t.kind]}`,
                     sub: `“${t.input.slice(0, 56)}${t.input.length > 56 ? "…" : ""}”`,
                     // To the tab that lists this kind — a dossier is on the
                     // Dossier tab, so sending "View" to Research would land the
@@ -445,7 +445,7 @@ export function Workspace({
                     },
                   }
                 : {
-                    title: `Deep research ${s.status} — ${DR_LABELS[t.kind]}`,
+                    title: `Deep research ${s.status}: ${DR_LABELS[t.kind]}`,
                     sub: s.error ?? undefined,
                   },
             );
@@ -482,7 +482,13 @@ export function Workspace({
           <div className="brand">
             <h1>
               <Link href="/" className="brand-home" onClick={() => setView("review")}>
-                OpenMLR
+                <img
+                  className="brand-mark"
+                  src="/brand/openmlr-mark-transparent-96.png"
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>OpenMLR</span>
               </Link>
             </h1>
           </div>
@@ -582,8 +588,11 @@ export function Workspace({
           it. */}
       <footer className="foot">
         <p>
-          OpenMLR — powered by Valyu. Does not replace qualified MLR review or constitute legal,
-          regulatory or medical advice.
+          OpenMLR, powered by{" "}
+          <a href="https://valyu.ai/" target="_blank" rel="noopener noreferrer">
+            Valyu
+          </a>
+          . Does not replace qualified MLR review or constitute legal, regulatory or medical advice.
         </p>
       </footer>
 

@@ -351,7 +351,7 @@ async function downloadDocx(t: DrTask, filename: string): Promise<void> {
 /** The sources as a numbered list, for the text-shaped formats. */
 function sourceLines(t: DrTask): string {
   return t.sources
-    .map((s, i) => `${i + 1}. ${s.title || s.url}${s.url ? ` — ${s.url}` : ""}`)
+    .map((s, i) => `${i + 1}. ${s.title || s.url}${s.url ? `: ${s.url}` : ""}`)
     .join("\n");
 }
 

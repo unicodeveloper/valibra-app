@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           {
             error: process.env.DATABASE_URL
               ? "No such review."
-              : "Persistence is off — set DATABASE_URL to keep review history.",
+              : "Persistence is off. Set DATABASE_URL to keep review history.",
           },
           { status: 404 },
         );

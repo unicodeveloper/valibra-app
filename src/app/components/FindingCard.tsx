@@ -216,7 +216,7 @@ export function FindingCard({
               className={`sm ${decision === "revision" ? "on-e" : "ghost"}`}
               onClick={() => onDecide(decision === "revision" ? null : "revision")}
               aria-pressed={decision === "revision"}
-              title="Approve with changes — add a suggested revision for the content team  ·  shortcut E"
+              title="Approve with changes. Add a suggested revision for the content team  ·  shortcut E"
             >
               Request revision
             </button>
@@ -224,7 +224,7 @@ export function FindingCard({
               className={`sm ${decision === "rejected" ? "on-r" : "ghost"}`}
               onClick={() => onDecide(decision === "rejected" ? null : "rejected")}
               aria-pressed={decision === "rejected"}
-              title="Flag this claim to be removed — add the reason  ·  shortcut R"
+              title="Flag this claim to be removed. Add the reason  ·  shortcut R"
             >
               Reject
             </button>
