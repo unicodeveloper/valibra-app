@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
-
-interface ReviewSummary {
-  id: string;
-  asset_name: string;
-  drug_name: string;
-  created_at: string;
-  finding_count: number;
-  decided_count: number;
-}
+import { usePersistenceStore } from "../stores/persistence-store";
 
 function when(iso: string): string {
   const d = new Date(iso);
@@ -31,33 +22,16 @@ function when(iso: string): string {
  * evidence — the stored review is the record).
  */
 export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
-  const [reviews, setReviews] = useState<ReviewSummary[] | null>(null);
-  const [persist, setPersist] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const reviews = usePersistenceStore((s) => s.historyReviews);
+  const persist = usePersistenceStore((s) => s.historyPersist);
+  const loading = usePersistenceStore((s) => s.historyLoading);
+  const error = usePersistenceStore((s) => s.historyError);
+  const loadHistory = usePersistenceStore((s) => s.loadHistory);
   const [opening, setOpening] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch("/api/reviews", { headers: await authorizedHeaders() });
-      const data = await r.json();
-      // In valyu mode history is per-account; an expired session reopens sign-in.
-      if (handleAuthFailure(r.status, data)) return;
-      if (!r.ok) throw new Error(data.error || "Could not load review history.");
-      setReviews(data.reviews ?? []);
-      setPersist(Boolean(data.persistenceEnabled));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load review history.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void load();
-  }, []);
+    void loadHistory();
+  }, [loadHistory]);
 
   return (
     <div className="wrap narrow">
@@ -72,7 +46,7 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
           </span>
         )}
         <div className="view-act">
-          <button id="hist-reload" className="quiet" onClick={() => load()} disabled={loading}>
+          <button id="hist-reload" className="quiet" onClick={() => void loadHistory(true)} disabled={loading}>
             {loading ? "Loading…" : "Refresh"}
           </button>
         </div>

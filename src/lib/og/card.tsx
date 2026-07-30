@@ -518,7 +518,7 @@ export const CARDS = {
 
   dossier: {
     eyebrow: "Evidence dossier",
-    eyebrowRight: "Export as DOCX",
+    eyebrowRight: "Export as PDF",
     headline: ["The evidence behind a drug,", "in one cited document"],
     lede: [
       "Approved labelling, the trial record and the literature, assembled",

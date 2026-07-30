@@ -4,8 +4,11 @@ import { routeMetadata } from "../route-metadata";
 export const metadata = routeMetadata({
   title: "Deep research",
   description:
-    "The MLR checks that need real research — post-market surveillance, device and indication questions — run as long-form research against licensed datasets, and keep running after the tab is closed.",
+    "Long-form MLR checks for surveillance, device and indication questions, grounded in licensed datasets and safe to leave running.",
   path: "/research",
+  image: "https://files.catbox.moe/9flk1d.png",
+  fallbackImage: "/og/research.png",
+  imageAlt: "OpenMLR deep research - long-form checks against licensed datasets.",
 });
 
 /** The research tab at its own address, so a reload or a shared link lands here

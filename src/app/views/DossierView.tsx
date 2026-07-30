@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DrTaskList } from "../components/DrTaskList";
 import { NotifyOptIn } from "../components/NotifyOptIn";
-import type { DrKind, DrTask } from "../dr";
+import { DR_ESTIMATE_NOTE, type DrKind, type DrTask } from "../dr";
 
 /**
  * Dossiers are DeepResearch runs, so they're async — but they belong here, not
@@ -87,7 +87,7 @@ export function DossierView({
         <div className="row" style={{ marginTop: 12, gap: 14 }}>
           <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
             Async DeepResearch across every dataset, including BindingDB for target binding
-            affinity (F24). Takes a few minutes — you can keep working.
+            affinity (F24). {DR_ESTIMATE_NOTE.dossier} You can keep working while it runs.
           </p>
           <NotifyOptIn />
         </div>

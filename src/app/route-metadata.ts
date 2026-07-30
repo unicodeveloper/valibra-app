@@ -9,23 +9,45 @@ import type { Metadata } from "next";
  * route now states what it is, once, and the rest of the shape — canonical URL,
  * Open Graph, X card — is derived rather than copy-pasted four times.
  *
- * Deliberately not set here: images. Each route has its own opengraph-image.tsx
- * and twitter-image.tsx, and Next's file conventions fill in og:image and its
- * width/height/type/alt siblings. Naming an image in this object would replace
- * the route's own card with whatever was named.
+ * Each route points to a hosted social image first, then a local static fallback
+ * in /public/og if the hosted copy is unavailable.
  */
 export function routeMetadata({
   title,
   description,
   path,
+  image,
+  fallbackImage,
+  imageAlt,
 }: {
   /** Slots into the "%s · OpenMLR" template from the root layout. */
   title: string;
   description: string;
   /** Root-relative, e.g. "/library". Resolved against metadataBase. */
   path: string;
+  /** Primary URL to a static 1200x630 social card. */
+  image?: string;
+  /** Local fallback path to a static 1200x630 social card. */
+  fallbackImage?: string;
+  /** Describes the card for anyone who can't see it. */
+  imageAlt?: string;
 }): Metadata {
   const fullTitle = `${title} · OpenMLR`;
+  const socialImages = [
+    {
+      url: image ?? "https://files.catbox.moe/h9i6us.png",
+      width: 1200,
+      height: 630,
+      alt: imageAlt ?? fullTitle,
+    },
+    {
+      url: fallbackImage ?? "/og/openmlr.png",
+      width: 1200,
+      height: 630,
+      alt: imageAlt ?? fullTitle,
+    },
+  ];
+
   return {
     title,
     description,
@@ -37,11 +59,13 @@ export function routeMetadata({
       description,
       url: path,
       locale: "en_US",
+      images: socialImages,
     },
     twitter: {
       card: "summary_large_image",
       title: fullTitle,
       description,
+      images: socialImages,
     },
   };
 }

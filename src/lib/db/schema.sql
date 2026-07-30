@@ -104,8 +104,12 @@ ALTER TABLE reviews        ADD COLUMN IF NOT EXISTS asset_hash  TEXT;
 ALTER TABLE claims_library ADD COLUMN IF NOT EXISTS owner_sub   TEXT;
 CREATE INDEX IF NOT EXISTS idx_reviews_owner ON reviews(owner_sub);
 CREATE INDEX IF NOT EXISTS idx_library_owner ON claims_library(owner_sub);
+CREATE INDEX IF NOT EXISTS idx_reviews_owner_created ON reviews(owner_sub, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_library_owner_created ON claims_library(owner_sub, created_at DESC);
 -- Dedup lookup: an owner's recent reviews of a given asset fingerprint.
 CREATE INDEX IF NOT EXISTS idx_reviews_owner_hash ON reviews(owner_sub, asset_hash, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_decisions_review_finding_latest
+  ON finding_decisions(review_id, finding_id, decided_at DESC, id DESC);
 
 -- Re-scope library uniqueness from (drug, claim) to (owner, drug, claim).
 -- Transforming, so guarded: drop the old unscoped constraint if it's still

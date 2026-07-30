@@ -231,28 +231,41 @@ export interface ValyuIdentity {
  */
 const IDENTITY_TTL_MS = 60_000;
 const identityCache = new Map<string, { identity: ValyuIdentity; expires: number }>();
+const identityInFlight = new Map<string, Promise<ValyuIdentity>>();
 
 async function resolveIdentity(accessToken: string): Promise<ValyuIdentity> {
   const cached = identityCache.get(accessToken);
   if (cached && cached.expires > Date.now()) return cached.identity;
 
-  const res = await fetch(`${VALYU_APP_URL}/api/oauth/userinfo`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const pending = identityInFlight.get(accessToken);
+  if (pending) return pending;
 
-  // A dead token here is the same reauth signal the proxy raises mid-flight.
-  if (res.status === 401 || res.status === 403) {
-    identityCache.delete(accessToken);
-    throw new ValyuAuthError("Session expired. Please sign in again.");
+  const request = (async () => {
+    const res = await fetch(`${VALYU_APP_URL}/api/oauth/userinfo`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    // A dead token here is the same reauth signal the proxy raises mid-flight.
+    if (res.status === 401 || res.status === 403) {
+      identityCache.delete(accessToken);
+      throw new ValyuAuthError("Session expired. Please sign in again.");
+    }
+    if (!res.ok) throw new Error(`Could not resolve Valyu identity (HTTP ${res.status}).`);
+
+    const info = await res.json();
+    if (!info?.sub) throw new Error("Valyu userinfo did not return a subject.");
+
+    const identity: ValyuIdentity = { sub: String(info.sub), email: info.email ? String(info.email) : "" };
+    identityCache.set(accessToken, { identity, expires: Date.now() + IDENTITY_TTL_MS });
+    return identity;
+  })();
+
+  identityInFlight.set(accessToken, request);
+  try {
+    return await request;
+  } finally {
+    identityInFlight.delete(accessToken);
   }
-  if (!res.ok) throw new Error(`Could not resolve Valyu identity (HTTP ${res.status}).`);
-
-  const info = await res.json();
-  if (!info?.sub) throw new Error("Valyu userinfo did not return a subject.");
-
-  const identity: ValyuIdentity = { sub: String(info.sub), email: info.email ? String(info.email) : "" };
-  identityCache.set(accessToken, { identity, expires: Date.now() + IDENTITY_TTL_MS });
-  return identity;
 }
 
 /**

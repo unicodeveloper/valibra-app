@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { DrTaskList } from "../components/DrTaskList";
 import { NotifyOptIn } from "../components/NotifyOptIn";
-import { DR_LABELS, DR_PLACEHOLDER, DR_SOURCE, type DrKind, type DrTask } from "../dr";
+import {
+  DR_ESTIMATE,
+  DR_ESTIMATE_NOTE,
+  DR_LABELS,
+  DR_PLACEHOLDER,
+  DR_SOURCE,
+  type DrKind,
+  type DrTask,
+} from "../dr";
 
 /**
  * The four targeted DeepResearch lookups. The dossier is a DR kind too, but it
@@ -44,7 +52,8 @@ export function ResearchView({
         <p className="view-sub">
           For checks whose authoritative source is a DeepResearch-only Valyu dataset: FDA Device
           Events (MAUDE), the NPI Registry, WHO ICD and CDC surveillance. These run async over a
-          few minutes; keep working and you&apos;ll be notified when a report lands.
+          few minutes; keep working and you&apos;ll be notified when a report lands. Targeted reports
+          are estimated at 1-4 minutes depending on dataset.
         </p>
       </header>
 
@@ -87,11 +96,14 @@ export function ResearchView({
             )}
           </button>
           <span className="hint" style={{ marginLeft: "auto" }}>
-            {DR_SOURCE[kind]}
+            {DR_SOURCE[kind]} · est. {DR_ESTIMATE[kind]}
           </span>
         </div>
 
         <div className="row" style={{ marginTop: 10 }}>
+          <p className="hint" style={{ margin: 0 }}>
+            {DR_ESTIMATE_NOTE[kind]}
+          </p>
           <NotifyOptIn />
         </div>
       </div>

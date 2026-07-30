@@ -43,6 +43,22 @@ export const DR_SOURCE: Record<DrKind, string> = {
   dossier: "All datasets · incl. BindingDB",
 };
 
+export const DR_ESTIMATE: Record<DrKind, string> = {
+  device: "1-3 min",
+  hcp: "1-2 min",
+  indication: "1-2 min",
+  surveillance: "2-4 min",
+  dossier: "15 - 20 min",
+};
+
+export const DR_ESTIMATE_NOTE: Record<DrKind, string> = {
+  device: "Estimated 1-3 minutes for a targeted MAUDE adverse-event lookup.",
+  hcp: "Estimated 1-2 minutes for a targeted NPI registry lookup.",
+  indication: "Estimated 1-2 minutes for a targeted WHO ICD coding lookup.",
+  surveillance: "Estimated 2-4 minutes for a targeted CDC surveillance check.",
+  dossier: "Estimated 15 - 20 minutes for a heavy multi-dataset evidence dossier.",
+};
+
 export const DR_PLACEHOLDER: Record<DrKind, string> = {
   device: "device name (e.g. insulin pump)",
   hcp: "provider name or NPI",

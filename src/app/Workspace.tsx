@@ -11,6 +11,7 @@ import { HistoryView } from "./views/HistoryView";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { SignInGate, SignInModal, UserMenu } from "./components/auth";
 import { authorizedHeaders, handleAuthFailure, useAuthStore } from "./stores/auth-store";
+import { usePersistenceStore } from "./stores/persistence-store";
 import { isValyuMode } from "@/lib/app-mode";
 import { notifyReportReady } from "./notify";
 import { DR_LABELS, DR_SOURCE, isDone, type DrKind, type DrTask } from "./dr";
@@ -126,6 +127,10 @@ export function Workspace({
   /** Whose tasks are on screen. Drives the load below and gates polling — in
    *  self-hosted mode there is no session, so it stays null and never gates. */
   const authSub = useAuthStore((s) => s.user?.id ?? null);
+  const authLoading = useAuthStore((s) => s.isLoading);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const resetPersistenceScope = usePersistenceStore((s) => s.resetForScope);
+  const prefetchPersistence = usePersistenceStore((s) => s.prefetch);
 
   const [drTasks, setDrTasks] = useState<DrTask[]>([]);
   // One task list, split by the tab that owns each kind. Polling, persistence
@@ -153,6 +158,20 @@ export function Workspace({
   // wouldn't survive the redirect's remount anyway, and the truthful URL lets
   // the reviewer see what they landed on.
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  const persistenceScope = !isValyuMode() ? "self-hosted" : authSub ? `valyu:${authSub}` : "signed-out";
+
+  // History and Library are small persistence reads, but they still pay auth and
+  // owner scoping. Do them once in the background so tab clicks render from the
+  // shared cache instead of starting the first request after the click.
+  useEffect(() => {
+    resetPersistenceScope(persistenceScope);
+  }, [persistenceScope, resetPersistenceScope]);
+
+  useEffect(() => {
+    const canReadPersistence = !isValyuMode() || (!authLoading && isAuthenticated && authSub);
+    if (canReadPersistence) void prefetchPersistence();
+  }, [authLoading, authSub, isAuthenticated, prefetchPersistence]);
 
   // Address follows the tab. Covers every route into a view — a tab click, a
   // toast's "View", a dossier started from a review — because it keys off the

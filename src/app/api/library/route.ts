@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listLibrary } from "@/lib/db/client";
+import { listLibrarySummaries } from "@/lib/db/client";
 import { withPersistenceScope, currentIdentity, ValyuAuthError } from "@/lib/valyu-credentials";
 
 export const runtime = "nodejs";
@@ -11,14 +11,7 @@ export async function GET(req: Request) {
   return withPersistenceScope(req, async () => {
     try {
       const owner = await currentIdentity();
-      // Drop the embedding vectors. They're ~31KB of JSON per row and exist for
-      // server-side semantic claim matching (see pipeline/index.ts, which calls
-      // listLibrary directly and still gets them) — the library UI never reads
-      // one. Left in, they were 63% of this response at 13 rows, and the query
-      // caps at 200.
-      const entries = (await listLibrary(drug, owner)).map(
-        ({ embedding: _embedding, ...entry }) => entry,
-      );
+      const entries = await listLibrarySummaries(drug, owner);
       return NextResponse.json({ entries, persistenceEnabled: Boolean(process.env.DATABASE_URL) });
     } catch (err) {
       if (err instanceof ValyuAuthError) {

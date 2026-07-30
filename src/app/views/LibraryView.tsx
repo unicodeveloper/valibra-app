@@ -1,16 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { authorizedHeaders, handleAuthFailure } from "../stores/auth-store";
-
-interface LibEntry {
-  drug_name: string;
-  claim_text: string;
-  claim_type: string;
-  verdict: string;
-  confidence: number | null;
-  status: "provisional" | "confirmed" | "rejected";
-}
+import { useEffect, useState } from "react";
+import { usePersistenceStore } from "../stores/persistence-store";
 
 /**
  * Whether a human has ruled on this claim. Confirmed entries are preferred when
@@ -36,49 +27,11 @@ const VERDICT_GLYPH: Record<string, string> = {
  */
 export function LibraryView() {
   const [q, setQ] = useState("");
-  const [entries, setEntries] = useState<LibEntry[] | null>(null);
-  const [persist, setPersist] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  /**
-   * The in-flight request. Filtering happens per keystroke, so a slow response
-   * for "met" can land after a fast one for "metformin" and overwrite the newer
-   * results with staler ones. Aborting the previous request before issuing the
-   * next one makes the latest keystroke authoritative, and stops the server
-   * doing work for a query the reviewer has already typed past.
-   */
-  const inFlight = useRef<AbortController | null>(null);
-
-  const load = useCallback(async (filter: string) => {
-    inFlight.current?.abort();
-    const ctl = new AbortController();
-    inFlight.current = ctl;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch(
-        `/api/library${filter ? `?drug=${encodeURIComponent(filter)}` : ""}`,
-        { signal: ctl.signal, headers: await authorizedHeaders() },
-      );
-      const data = await r.json();
-      // In valyu mode the library is per-account; an expired session reopens sign-in.
-      if (handleAuthFailure(r.status, data)) return;
-      if (!r.ok) throw new Error(data.error || "Could not load the library.");
-      setEntries(data.entries ?? []);
-      setPersist(Boolean(data.persistenceEnabled));
-    } catch (e) {
-      // An abort is this component superseding itself, not a failure. Surfacing
-      // it would flash an error on every other keystroke.
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setError(e instanceof Error ? e.message : "Could not load the library.");
-    } finally {
-      // Only the newest request owns the spinner; an aborted one must not turn
-      // it off underneath its successor.
-      if (inFlight.current === ctl) setLoading(false);
-    }
-  }, []);
+  const entries = usePersistenceStore((s) => s.libraryEntries);
+  const persist = usePersistenceStore((s) => s.libraryPersist);
+  const loading = usePersistenceStore((s) => s.libraryLoading);
+  const error = usePersistenceStore((s) => s.libraryError);
+  const loadLibrary = usePersistenceStore((s) => s.loadLibrary);
 
   /**
    * Filter as the reviewer types. Debounced so a drug name is one request rather
@@ -87,12 +40,9 @@ export function LibraryView() {
    * the whole point of this tab, so it shows up without anyone pressing a button.
    */
   useEffect(() => {
-    const t = setTimeout(() => void load(q.trim()), q ? 220 : 0);
+    const t = setTimeout(() => void loadLibrary(q.trim()), q ? 220 : 0);
     return () => clearTimeout(t);
-  }, [q, load]);
-
-  // Abort whatever is open if the reviewer leaves the tab mid-request.
-  useEffect(() => () => inFlight.current?.abort(), []);
+  }, [q, loadLibrary]);
 
   return (
     <div className="wrap narrow">

@@ -14,13 +14,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   /* Only the canonical URL is per-id. The title and description stay generic on
      purpose: a review holds a client's unapproved promotional copy, and this
-     metadata is served to any crawler that follows the link. The card itself
-     (opengraph-image.tsx in this folder) is generic for the same reason. */
+     metadata is served to any crawler that follows the link. The static card is
+     generic for the same reason. */
   return routeMetadata({
     title: "Review",
     description:
-      "A completed MLR review: every extracted claim with its verdict, the evidence behind it and the reviewer's decision — every finding cited.",
+      "A completed MLR review with every extracted claim, verdict, cited evidence and reviewer decision in one place.",
     path: `/review/${id}`,
+    image: "https://files.catbox.moe/0nu4r4.png",
+    fallbackImage: "/og/review.png",
+    imageAlt: "OpenMLR review - a verdict on every claim with its source attached.",
   });
 }
 

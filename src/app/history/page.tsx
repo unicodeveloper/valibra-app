@@ -4,8 +4,11 @@ import { routeMetadata } from "../route-metadata";
 export const metadata = routeMetadata({
   title: "Review history",
   description:
-    "Every review kept on the record — its claims, findings, reviewer decisions and the datasets it queried. Reopen any run, or export it as an evidence dossier.",
+    "Every review keeps its claims, findings, reviewer decisions and queried datasets, ready to reopen or export later.",
   path: "/history",
+  image: "https://files.catbox.moe/03sagb.png",
+  fallbackImage: "/og/history.png",
+  imageAlt: "OpenMLR review history - every review and decision stays on the record.",
 });
 
 /** The history tab at its own address, so a reload or a shared link lands here

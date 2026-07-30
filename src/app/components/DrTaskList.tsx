@@ -3,7 +3,7 @@
 import { Markdown } from "./Markdown";
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import { DR_LABELS, DR_SOURCE, isDone, type DrTask } from "../dr";
+import { DR_ESTIMATE, DR_LABELS, DR_SOURCE, isDone, type DrTask } from "../dr";
 import { authorizedHeaders } from "../stores/auth-store";
 import { reportSlug, stripTrailingSources } from "@/lib/report";
 
@@ -71,7 +71,11 @@ function DrCard({ task: t, onOpen }: { task: DrTask; onOpen: () => void }) {
               {done ? t.status : t.status || "running"}
             </span>
             <span className="tag">{t.dataset || DR_SOURCE[t.kind]}</span>
-            {!done && <span className="hint">{elapsedTxt} elapsed</span>}
+            {!done && (
+              <span className="hint">
+                {elapsedTxt} elapsed · est. {DR_ESTIMATE[t.kind]}
+              </span>
+            )}
           </div>
           <p className="hint" style={{ marginTop: 6 }}>
             “{t.input}”

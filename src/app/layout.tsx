@@ -60,10 +60,25 @@ const X_SITE = process.env.NEXT_PUBLIC_TWITTER_SITE;
 const X_CREATOR = process.env.NEXT_PUBLIC_TWITTER_CREATOR;
 
 const DESCRIPTION =
-  "OpenMLR is an open-source, Valyu-grounded MLR (Medical-Legal-Regulatory) pre-check. It extracts every promotional claim and tests it against approved labelling, trial records and the peer-reviewed literature — and every finding cites its source, for a reviewer to accept or reject.";
+  "OpenMLR is an open-source MLR pre-check that extracts promotional claims and tests them against labelling, trial records and literature, with citations.";
 
 const SHORT_DESCRIPTION =
-  "Open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence — every finding cited.";
+  "Open-source MLR review. Every promotional claim checked against biomedical evidence, with a citation for every finding.";
+
+const SOCIAL_IMAGES = [
+  {
+    url: "https://files.catbox.moe/h9i6us.png",
+    width: 1200,
+    height: 630,
+    alt: "OpenMLR - check every claim against the evidence.",
+  },
+  {
+    url: "/og/openmlr.png",
+    width: 1200,
+    height: 630,
+    alt: "OpenMLR - check every claim against the evidence.",
+  },
+];
 
 /** Matches the hero on the landing page, so the tab, the search result and the
  *  first thing on screen all say the same thing. Declared once — it appears in
@@ -97,11 +112,8 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: "/" },
   /* Open Graph is the card Slack, LinkedIn, Discord, WhatsApp and iMessage all
-     read. The image is deliberately absent here: app/opengraph-image.tsx is a
-     file convention, so Next emits og:image, og:image:width, og:image:height,
-     og:image:type and og:image:alt for it — and does the same with each route's
-     own card. Naming an image here as well would override those per-route cards
-     with this one. */
+     read. The first image is hosted externally; the second is the local static
+     fallback in case the hosted copy is unavailable. */
   openGraph: {
     type: "website",
     siteName: "OpenMLR",
@@ -109,13 +121,14 @@ export const metadata: Metadata = {
     description: SHORT_DESCRIPTION,
     url: "/",
     locale: "en_US",
+    images: SOCIAL_IMAGES,
   },
-  /* summary_large_image is the 1200×630 card; the image itself comes from
-     app/twitter-image.tsx, per route, the same way. */
+  /* summary_large_image is the 1200x630 card. */
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: SHORT_DESCRIPTION,
+    images: SOCIAL_IMAGES,
     ...(X_SITE ? { site: X_SITE } : {}),
     ...(X_CREATOR ? { creator: X_CREATOR } : {}),
   },
