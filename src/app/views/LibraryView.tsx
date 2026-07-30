@@ -191,8 +191,12 @@ export function LibraryView() {
         </div>
       )}
 
+      {/* tbl-stack: below 620px each row becomes a card and each cell a
+          labelled line, driven by the data-label attributes below. The claim
+          column alone reserves 260px, so on a phone the scrolling table put
+          the verdict and the claim it belongs to on different screens. */}
       {entries && entries.length > 0 && (
-        <div className="tbl-scroll" style={{ marginTop: 14 }}>
+        <div className="tbl-scroll tbl-stack" style={{ marginTop: 14 }}>
           <table>
             <thead>
               <tr>
@@ -209,23 +213,29 @@ export function LibraryView() {
             <tbody>
               {entries.map((e, i) => (
                 <tr key={i}>
-                  <td className="claim-c">{e.claim_text}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>{e.drug_name}</td>
-                  <td>
+                  {/* data-label carries the column header down into the cell
+                      for the stacked layout below 620px. */}
+                  <td className="claim-c" data-label="Claim">
+                    {e.claim_text}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }} data-label="Drug">
+                    {e.drug_name}
+                  </td>
+                  <td data-label="Type">
                     <span className="tag">{e.claim_type}</span>
                   </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  <td style={{ whiteSpace: "nowrap" }} data-label="Verdict">
                     <span className={`vd ${e.verdict}`}>
                       <span aria-hidden="true">{VERDICT_GLYPH[e.verdict] ?? "·"}</span>
                       {e.verdict.replace(/_/g, " ")}
                     </span>
                   </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  <td style={{ whiteSpace: "nowrap" }} data-label="Status">
                     <span className="hint" style={{ fontSize: 11.5 }}>
                       {STATUS_LABEL[e.status] ?? e.status}
                     </span>
                   </td>
-                  <td className="num">
+                  <td className="num" data-label="Confidence">
                     {e.confidence != null ? Math.round(e.confidence * 100) + "%" : "—"}
                   </td>
                 </tr>

@@ -23,6 +23,30 @@ export type View = "review" | "history" | "library" | "dossier" | "research";
  *  document.title, so it needs the unbadged string to restore. */
 const BASE_TITLE = "OpenMLR — Check every claim against the evidence";
 
+/**
+ * Each tab has a real address.
+ *
+ * The URL is kept in step with `history.pushState`, not `router.push`: the tabs
+ * are one workspace, and a Next navigation would unmount this component on every
+ * switch — losing the compose form, a loaded review, everything. pushState moves
+ * the address without a navigation, and the routes exist so a reload or a shared
+ * link is served the right tab instead of bouncing to the compose screen.
+ */
+const PATH_BY_VIEW: Record<View, string> = {
+  review: "/",
+  history: "/history",
+  library: "/library",
+  dossier: "/dossier",
+  research: "/research",
+};
+
+const VIEW_BY_PATH: Record<string, View> = {
+  "/history": "history",
+  "/library": "library",
+  "/dossier": "dossier",
+  "/research": "research",
+};
+
 const TABS: { id: View; label: string }[] = [
   { id: "review", label: "Review" },
   { id: "history", label: "History" },
@@ -69,6 +93,7 @@ async function fetchDrTasks(): Promise<DrTask[]> {
       title: (t.title as string | null) ?? null,
       output: (t.output as string | null) ?? null,
       sources: Array.isArray(t.sources) ? (t.sources as DrTask["sources"]) : [],
+      pdfUrl: (t.pdf_url as string | null) ?? null,
       error: (t.error as string | null) ?? null,
       startedAt: t.created_at ? new Date(String(t.created_at)).getTime() : Date.now(),
     };
@@ -128,6 +153,28 @@ export function Workspace({
   // wouldn't survive the redirect's remount anyway, and the truthful URL lets
   // the reviewer see what they landed on.
   const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Address follows the tab. Covers every route into a view — a tab click, a
+  // toast's "View", a dossier started from a review — because it keys off the
+  // resulting state rather than off any one call site.
+  useEffect(() => {
+    // A saved review owns its own URL; switching to the Review tab while reading
+    // one must not rewrite /review/<id> back to "/".
+    if (view === "review" && window.location.pathname.startsWith("/review/")) return;
+    const target = PATH_BY_VIEW[view];
+    if (window.location.pathname !== target) window.history.pushState(null, "", target);
+  }, [view]);
+
+  // Back and Forward move between tabs, since each one pushed an entry.
+  useEffect(() => {
+    const onPop = () => {
+      const path = window.location.pathname;
+      if (path.startsWith("/review/")) return;
+      setView(VIEW_BY_PATH[path] ?? "review");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const pushToast = useCallback((t: Omit<Toast, "id">) => {
     const id = Date.now() + Math.random();
@@ -256,6 +303,7 @@ export function Workspace({
           title: null,
           output: null,
           sources: [],
+          pdfUrl: null,
           error: null,
           startedAt: Date.now(),
         },
@@ -291,6 +339,7 @@ export function Workspace({
                   title: null,
                   output: null,
                   sources: [],
+                  pdfUrl: null,
                   error: null,
                   startedAt: Date.now(),
                 }
@@ -339,6 +388,7 @@ export function Workspace({
                     title: s.title,
                     output: s.output,
                     sources: s.sources ?? [],
+                    pdfUrl: s.pdfUrl ?? null,
                     error: s.error,
                   }
                 : x,

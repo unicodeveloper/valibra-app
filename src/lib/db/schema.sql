@@ -159,11 +159,16 @@ CREATE TABLE IF NOT EXISTS dr_tasks (
   output      TEXT,
   -- [{ title, url }] as returned by DeepResearch.
   sources     JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  -- Valyu's typeset PDF of the report. Null for tasks created before the app
+  -- started asking for a PDF output format, and for any that never rendered one.
+  pdf_url     TEXT,
   error       TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_dr_tasks_owner ON dr_tasks(owner_sub, created_at DESC);
+-- Upgrade existing installs.
+ALTER TABLE dr_tasks ADD COLUMN IF NOT EXISTS pdf_url TEXT;
 
 -- ============================================================================
 -- Migration patterns

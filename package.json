@@ -16,6 +16,7 @@
     "dev:reset-trial": "node scripts/reset-trial.mjs"
   },
   "dependencies": {
+    "docx": "^9.7.1",
     "next": "^15.5.4",
     "openai": "^4.104.0",
     "postgres": "^3.4.5",

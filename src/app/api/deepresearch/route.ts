@@ -128,6 +128,7 @@ export async function GET(req: Request) {
           title: status.title,
           output: status.output,
           sources: status.sources ?? [],
+          pdfUrl: status.pdfUrl,
           error: status.error,
         });
       } catch (persistErr) {

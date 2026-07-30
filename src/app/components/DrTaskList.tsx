@@ -1,8 +1,11 @@
 "use client";
 
 import { Markdown } from "./Markdown";
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { DR_LABELS, DR_SOURCE, isDone, type DrTask } from "../dr";
+import { authorizedHeaders } from "../stores/auth-store";
+import { reportSlug, stripTrailingSources } from "@/lib/report";
 
 /**
  * The list of deep-research tasks, and the drawer for reading one.
@@ -32,10 +35,24 @@ export function DrTaskList({ tasks }: { tasks: DrTask[] }) {
 
 function DrCard({ task: t, onOpen }: { task: DrTask; onOpen: () => void }) {
   const done = isDone(t.status);
-  const [elapsed, setElapsed] = useState(0);
+  /**
+   * Seeded from the task's own start time, not from zero.
+   *
+   * Switching tabs unmounts this card and mounts a fresh one, and starting at 0
+   * meant a run that had been going for four minutes painted "0s elapsed" and
+   * only corrected on the first interval tick a second later — read as the list
+   * showing stale state and then snapping.
+   */
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - t.startedAt) / 1000)),
+  );
 
   useEffect(() => {
     if (done) return;
+    // Re-sync immediately as well as on the interval: a tab switch, or a tab
+    // that was backgrounded (where timers are throttled), must not wait a second
+    // to show the truth.
+    setElapsed(Math.max(0, Math.floor((Date.now() - t.startedAt) / 1000)));
     const iv = setInterval(() => setElapsed(Math.floor((Date.now() - t.startedAt) / 1000)), 1000);
     return () => clearInterval(iv);
   }, [done, t.startedAt]);
@@ -108,10 +125,13 @@ function DrCard({ task: t, onOpen }: { task: DrTask; onOpen: () => void }) {
 function ReportDrawer({ task: t, onClose }: { task: DrTask; onClose: () => void }) {
   const panelRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  // The Word file is built server-side and takes a beat; without this the button
+  // is another dead click.
+  const [docxState, setDocxState] = useState<"idle" | "working" | "failed">("idle");
 
   const title = t.title || DR_LABELS[t.kind];
   const dataset = t.dataset || DR_SOURCE[t.kind];
-  const stem = slug(`${title}-${t.input}`) + "-" + new Date().toISOString().slice(0, 10);
+  const stem = reportSlug(`${title}-${t.input}`) + "-" + new Date().toISOString().slice(0, 10);
   // What the reader is actually looking at — the same de-duplicated body the
   // drawer renders, so a download is never a different document to the screen.
   const body = t.sources.length > 0 ? stripTrailingSources(t.output ?? "") : t.output ?? "";
@@ -138,7 +158,15 @@ function ReportDrawer({ task: t, onClose }: { task: DrTask; onClose: () => void 
     };
   }, [onClose]);
 
-  return (
+  /**
+   * Rendered into <body>, not in place.
+   *
+   * An overlay that lives inside `main` is still a child of the view's stacking
+   * and overflow contexts, and — the reason this changed — the print stylesheet
+   * hides every body child except the drawer, so a drawer nested inside `main`
+   * was hidden along with it. Printing to PDF produced a blank page.
+   */
+  return createPortal(
     <div className="drawer-scrim" role="presentation" onClick={onClose}>
       <aside
         className="drawer"
@@ -194,12 +222,48 @@ function ReportDrawer({ task: t, onClose }: { task: DrTask; onClose: () => void 
           >
             HTML
           </button>
-          {/* Print rather than a generated file: the browser's own PDF export
-              honours the print stylesheet, and shipping a PDF renderer to do
-              the same job would cost more than the feature is worth. */}
-          <button className="ghost sm" onClick={() => window.print()}>
-            PDF
+          <button
+            className="ghost sm"
+            disabled={docxState === "working"}
+            onClick={async () => {
+              setDocxState("working");
+              try {
+                await downloadDocx(t, `${stem}.docx`);
+                setDocxState("idle");
+              } catch {
+                setDocxState("failed");
+              }
+            }}
+          >
+            {docxState === "working" ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                Word…
+              </>
+            ) : (
+              "Word"
+            )}
           </button>
+
+          {/* Valyu typesets its own PDF of the report when the task asks for one,
+              which beats anything the browser can print. Tasks created before the
+              app started requesting a PDF have no link, so those still fall back
+              to the print stylesheet. */}
+          {docxState === "failed" && (
+            <span className="err" role="alert" style={{ fontSize: "var(--t-sm)" }}>
+              Word export failed
+            </span>
+          )}
+
+          {t.pdfUrl ? (
+            <a className="ghost sm btn-link" href={t.pdfUrl} target="_blank" rel="noreferrer">
+              PDF ↗
+            </a>
+          ) : (
+            <button className="ghost sm" onClick={() => window.print()} title="Print to PDF">
+              PDF
+            </button>
+          )}
         </div>
 
         <div className="drawer-body" ref={bodyRef}>
@@ -234,7 +298,8 @@ function ReportDrawer({ task: t, onClose }: { task: DrTask; onClose: () => void 
           )}
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -253,14 +318,30 @@ function save(filename: string, content: string, mime: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function slug(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "report"
-  );
+/**
+ * The Word file is built by the server from the stored row — the docx builder is
+ * far too large to ship to the browser just to produce a download.
+ */
+async function downloadDocx(t: DrTask, filename: string): Promise<void> {
+  const r = await fetch(`/api/deepresearch/docx?id=${encodeURIComponent(t.taskId)}`, {
+    headers: await authorizedHeaders(),
+  });
+  // Throw rather than return: swallowing this left the reviewer clicking a
+  // button that did nothing at all, with no way to tell a slow build from a
+  // failed one.
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error(body?.error || "Couldn't build the Word document.");
+  }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** The sources as a numbered list, for the text-shaped formats. */
@@ -355,23 +436,6 @@ function toPlainText(md: string): string {
     .replace(/[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-}
-
-/**
- * Drop the report's own trailing "Sources" section.
- *
- * DeepResearch ends its markdown with a heading and a wall of bare titles and
- * URLs — the same list we render as chips below, from the structured `sources`
- * array. Rendered both ways you get two Sources sections back to back, the first
- * an unstyled run of blue links. Only the last such heading is cut, and only
- * when there are chips to replace it, so a report that returns no structured
- * sources keeps whatever it wrote.
- */
-function stripTrailingSources(md: string): string {
-  const heading = /^#{1,6}[ \t]*(sources|references|citations|bibliography)[ \t]*:?[ \t]*$/gim;
-  let cut = -1;
-  for (const m of md.matchAll(heading)) if (m.index !== undefined) cut = m.index;
-  return cut > -1 ? md.slice(0, cut).trimEnd() : md;
 }
 
 /**
