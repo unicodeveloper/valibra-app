@@ -133,6 +133,11 @@ export async function createDeepResearch(
     mode: spec.mode,
     search: { searchType: "all" },
     ...(alertEmail ? { alertEmail } : {}),
+    // Markdown is what the app renders; the PDF is Valyu's own typeset copy of
+    // the same report, linked from the drawer. Asking for it here is the only
+    // way to get one — output_formats defaults to markdown alone, and a task
+    // that finished without it can never be given a pdf_url after the fact.
+    outputFormats: ["markdown", "pdf"],
   });
   return {
     taskId: res?.deepresearch_id ?? "",
@@ -151,6 +156,8 @@ export interface DrStatusResult {
   output: string | null;
   sources: { title: string; url: string }[];
   error: string | null;
+  /** Valyu's typeset PDF of the report, once it has rendered one. */
+  pdfUrl: string | null;
 }
 
 /** Poll a DeepResearch task. The client calls this until `done` is true. */
@@ -172,6 +179,7 @@ export async function getDeepResearchStatus(taskId: string): Promise<DrStatusRes
     status,
     done,
     title: res?.title ?? null,
+    pdfUrl: res?.pdf_url ?? null,
     output,
     sources,
     error: res?.error ?? null,

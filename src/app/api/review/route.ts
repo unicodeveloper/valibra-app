@@ -41,7 +41,9 @@ const RERUN_WINDOW_HOURS = Number(process.env.RERUN_WINDOW_HOURS) || 336;
 const RequestSchema = z.object({
   assetText: z.string().min(1, "assetText is required"),
   assetName: z.string().default("Untitled asset"),
-  markets: z.array(z.enum(["US", "EU", "UK"])).default(["US"]), // F14
+  // F14. "UK/EU" is the one non-US option the UI offers; bare "EU" and "UK" are
+  // still accepted so a stored or reopened review can be re-run unchanged.
+  markets: z.array(z.enum(["US", "UK/EU", "EU", "UK"])).default(["US"]),
   // Set by the client's "Re-run anyway" action to bypass the duplicate warning.
   force: z.boolean().default(false),
 });

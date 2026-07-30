@@ -21,6 +21,8 @@ export interface DrTask {
   title: string | null;
   output: string | null;
   sources: { title: string; url: string }[];
+  /** Valyu's typeset PDF, when the task rendered one. */
+  pdfUrl: string | null;
   error: string | null;
   startedAt: number;
 }

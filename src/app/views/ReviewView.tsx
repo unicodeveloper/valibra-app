@@ -26,7 +26,20 @@ import { isValyuMode } from "@/lib/app-mode";
 import { stashPendingReview, peekPendingReview, takePendingReview } from "../pending-review";
 import { track } from "../track";
 
-const MARKETS = ["US", "EU", "UK"] as const;
+/**
+ * One non-US option, not two.
+ *
+ * EU and UK were separate buttons but the same retrieval: anything that isn't US
+ * goes to the UK legislation and case-law sources (see searchUkRegulatory). There
+ * is no EMA/EudraLex corpus behind an "EU" selection, so offering it as its own
+ * market promised a European grounding the review couldn't deliver — and then
+ * printed "EU" in the provenance bar over UK sources. The label now says what
+ * actually gets searched.
+ *
+ * Legacy reviews stored "EU" or "UK" alone; those values still render fine in
+ * history, they simply can't be re-selected here.
+ */
+const MARKETS = ["US", "UK/EU"] as const;
 type Market = (typeof MARKETS)[number];
 
 /** Compact absolute timestamp for the duplicate-review prompt. */

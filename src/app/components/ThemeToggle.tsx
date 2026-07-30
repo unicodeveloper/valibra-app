@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-export type Theme = "system" | "light" | "dark";
+export type Theme = "light" | "dark";
 
 const THEMES: { id: Theme; label: string; hint: string }[] = [
-  { id: "system", label: "Auto", hint: "Follow the operating system" },
   { id: "light", label: "Light", hint: "Always light" },
   { id: "dark", label: "Dark", hint: "Always dark" },
 ];
@@ -19,9 +18,12 @@ export const THEME_KEY = "openmlr-theme";
  * where every token is a `light-dark()` pair). So switching themes is a single
  * attribute write, and there is no second palette here to keep in sync.
  *
- * Three states rather than a two-way switch, because "follow the OS" is a real
- * preference and not the same as "light". A binary toggle silently opts the
- * reviewer out of their system setting forever the first time they touch it.
+ * Light and dark only. The OS is still what decides the *initial* look — with no
+ * stored preference the root keeps `color-scheme: light dark` and follows the
+ * system, exactly as before — but it is no longer offered as a third button to
+ * choose. The control answers "what am I looking at", and the first click pins
+ * it. That does mean a reviewer cannot hand the decision back to the OS once
+ * they've pinned it, short of clearing site data.
  */
 export function ThemeToggle() {
   // Starts null so the first paint renders nothing selected. The real value is
@@ -33,18 +35,19 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const attr = document.documentElement.dataset.theme;
-    setTheme(attr === "light" || attr === "dark" ? attr : "system");
+    if (attr === "light" || attr === "dark") {
+      setTheme(attr);
+      return;
+    }
+    // No stored preference: the page is following the OS, so show whichever of
+    // the two it actually resolved to rather than leaving both unselected.
+    setTheme(window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   }, []);
 
   function choose(next: Theme) {
     setTheme(next);
-    if (next === "system") {
-      delete document.documentElement.dataset.theme;
-      localStorage.removeItem(THEME_KEY);
-    } else {
-      document.documentElement.dataset.theme = next;
-      localStorage.setItem(THEME_KEY, next);
-    }
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem(THEME_KEY, next);
   }
 
   return (

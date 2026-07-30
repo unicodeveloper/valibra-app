@@ -141,7 +141,14 @@
   --t-xl: 31px;
   --t-display: 40px;
 
-  /* Vertical space the shell reserves outside the view itself: the 59px sticky
+  /* Height of the sticky masthead. Declared as a token because three other
+     things are measured off it — the sticky document pane's offset, the
+     scroll-margin that stops an anchored finding landing underneath the bar,
+     and --shell-chrome below — and on a narrow screen the masthead grows a
+     second row. One override in the 860px block moves all four together. */
+  --mast-h: 59px;
+
+  /* Vertical space the shell reserves outside the view itself: the sticky
      masthead plus the 46px disclaimer footer. Anything that wants to fill "one
      screen" must subtract this, or it pushes the footer off the bottom and
      forces a scroll that has nothing to do with the content.
@@ -149,7 +156,32 @@
      Measured, not derived: the footer's 13px padding either side of a 19.6px
      line rounds to 46, and reserving 45 left a one-pixel scrollbar on every
      screen — which is just as annoying as a hundred. */
-  --shell-chrome: 105px;
+  --shell-chrome: calc(var(--mast-h) + 46px);
+
+  /* The page gutter, in one place. The masthead, the content column and the
+     footer all have to indent by the same amount or the wordmark, the first
+     card and the disclaimer sit on three different left edges — and they each
+     used to hardcode 24px, so narrowing the gutter for a phone meant finding
+     every copy. It also carries the safe-area inset, which is what keeps
+     content clear of the notch when a phone is held in landscape. */
+  --gutter: max(24px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(24px, env(safe-area-inset-right, 0px));
+}
+
+/* One step down for tablets and phones. 20px is not a meaningful saving on a
+   phone, so the narrow step is a real one: 14px puts a card's own padding, not
+   the page margin, next to the text. */
+@media (max-width: 900px) {
+  :root {
+    --gutter: max(18px, env(safe-area-inset-left, 0px));
+    --gutter-r: max(18px, env(safe-area-inset-right, 0px));
+  }
+}
+@media (max-width: 620px) {
+  :root {
+    --gutter: max(14px, env(safe-area-inset-left, 0px));
+    --gutter-r: max(14px, env(safe-area-inset-right, 0px));
+  }
 }
 
 
@@ -170,6 +202,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* iOS inflates text in landscape unless told not to, which silently breaks
+     every size relationship the type scale sets up. Sizing is handled here. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -220,7 +256,7 @@ body {
 .mast-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 var(--gutter-r) 0 var(--gutter);
   display: flex;
   align-items: center;
   gap: 28px;
@@ -232,6 +268,13 @@ body {
    two-row layout has to start before the single row runs out of space, not at
    phone widths. */
 @media (max-width: 860px) {
+  /* Two rows now, so everything measured off the masthead grows with it: a 46px
+     brand row plus a 42px tab row plus the 1px bottom rule. Without this the
+     sticky document pane tucked itself under the bar and an anchored finding
+     scrolled to a position 30px behind it. */
+  :root {
+    --mast-h: 89px;
+  }
   /* Brand + five tabs + the theme control can't share one row here. Two rows via
      grid: brand, theme control and auth control up top, tabs underneath with
      their own horizontal scroll rather than pushing the page sideways. Grid
@@ -245,7 +288,7 @@ body {
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0 10px;
-    padding: 0 14px;
+    padding: 0 var(--gutter-r) 0 var(--gutter);
   }
   /* Rows are pinned explicitly. Auto-placement is order-dependent and never
      backtracks: .nav spans the full width and sits before .theme-seg in the DOM,
@@ -256,6 +299,15 @@ body {
     grid-row: 1;
     min-height: 46px;
     align-items: center;
+    /* The wordmark is the one thing here that may be squeezed. Without a zero
+       floor its intrinsic width props the 1fr track open and pushes the theme
+       and auth controls off the right edge on a 320px phone. */
+    min-width: 0;
+  }
+  .brand h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .theme-seg {
     grid-column: 2;
@@ -284,6 +336,13 @@ body {
     margin-left: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    /* A flick along the tabs must not turn into a back-navigation gesture or
+       start scrolling the page underneath once the strip hits its end. */
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Keyboard/arrow-key tab switching scrolls the focused tab into view;
+       without this the tab lands flush against the clipped edge. */
+    scroll-padding-inline: 12px;
   }
   .nav::-webkit-scrollbar {
     display: none;
@@ -292,6 +351,28 @@ body {
     min-height: 42px;
     flex: 1 0 auto;
     justify-content: center;
+  }
+}
+/* Below ~420px five tabs no longer fit even in a scroller without each one
+   being a cramped stub, so they stop trying to share the width equally and
+   size to their labels — the strip scrolls, which it already does.
+   Measured: the five labels need 384px of the 347px a 375px phone has. */
+@media (max-width: 420px) {
+  .nav {
+    gap: 0;
+    /* Fade the trailing edge so the strip reads as scrollable. A half-visible
+       "Resea…" is the honest signal on its own, but it depends on where the
+       cut happens to land — at some widths a tab ends flush with the edge and
+       the strip looks complete when it isn't. The fade is true at every width.
+
+       Only below this breakpoint, where the tabs are known to overflow: a
+       gradient over a strip with nothing to scroll would be dimming a tab for
+       no reason. */
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  .nav button {
+    flex: 0 0 auto;
+    padding: 0 12px;
   }
 }
 .brand {
@@ -314,6 +395,23 @@ body {
 }
 .brand-home:hover {
   color: var(--accent);
+}
+/* Below ~285px the wordmark no longer fits beside the theme and account
+   controls: measured on a folded Galaxy Fold (280px) it needs 102px and has
+   97px, so the ellipsis set in the masthead block above kicked in and the bar
+   read "OpenML…". Truncating the product's own name is the one thing that
+   should never happen here, so it steps down a notch of the type scale
+   instead — at 17px it needs 79px and still outranks everything else in the
+   bar. The ellipsis stays as a last resort for a width no device has.
+
+   This has to sit *after* the `.brand h1` rule above rather than nested inside
+   the 860px block where it belongs logically: a media query contributes no
+   specificity, so the later plain `font-size: var(--t-lg)` beat the earlier
+   wrapped override and the step-down silently did nothing. */
+@media (max-width: 300px) {
+  .brand h1 {
+    font-size: var(--t-md);
+  }
 }
 
 /* Standing disclaimer. Quiet by design — it has to be present on every view
@@ -351,7 +449,11 @@ body > main {
    free. A margin here would be space the viewport lock can't see. */
 .foot {
   border-top: 1px solid var(--line);
-  padding: 13px 24px;
+  /* The bottom inset is the home-indicator clearance on a gesture-nav phone.
+     It is added to, not substituted for, the 13px — --shell-chrome measures the
+     46px the footer occupies above the inset, and the inset is space the
+     browser was never going to give the content anyway. */
+  padding: 13px var(--gutter-r) calc(13px + env(safe-area-inset-bottom, 0px)) var(--gutter);
 }
 .foot p {
   max-width: 760px;
@@ -455,24 +557,42 @@ body > main {
 .wrap {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px 24px 96px;
+  padding: 24px var(--gutter-r) 96px var(--gutter);
 }
 .wrap.narrow {
   max-width: 900px;
+}
+/* 96px of bottom padding is scroll-past room for a mouse wheel on a long
+   findings list. On a phone it is a screenful of blank paper between the last
+   card and the disclaimer. */
+@media (max-width: 620px) {
+  .wrap {
+    padding-top: 16px;
+    padding-bottom: 40px;
+  }
 }
 
 /* toast */
 .toasts {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  left: calc(20px + env(safe-area-inset-left, 0px));
   z-index: 60;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
-  max-width: min(420px, calc(100vw - 40px));
+  /* Pinned to the trailing edge on a desktop, but allowed to use the full
+     gutter-to-gutter width on a phone rather than being squeezed into a 420px
+     column that a two-line message overflows. `left` plus align-items does
+     that in one rule; pointer-events keeps the empty strip from swallowing
+     clicks on whatever is behind it. */
+  pointer-events: none;
 }
 .toast {
+  pointer-events: auto;
+  max-width: min(420px, 100%);
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -544,6 +664,11 @@ body > main {
   border-radius: var(--radius);
   padding: 18px;
 }
+@media (max-width: 620px) {
+  .panel {
+    padding: 14px;
+  }
+}
 
 label,
 .lbl {
@@ -593,7 +718,15 @@ textarea {
 }
 select {
   cursor: pointer;
+  /* A select left to the platform picks its own height, which on iOS is well
+     under the 44px a thumb needs. */
+  min-height: 38px;
 }
+
+/* Touch-pointer overrides for form fields and hit targets live in one block at
+   the very end of this file — see "touch input". They have to be last: a media
+   query adds no specificity, so anything declared later for a specific control
+   (`.theme-seg button`, `.drawer-x`, `.annot-text`) simply wins. */
 
 .row {
   display: flex;
@@ -625,8 +758,20 @@ select {
   /* Grow to fill the toolbar rather than sit at a stub width, but cap it so it
      doesn't sprawl the full width of a 1400px panel on a wide screen. */
   flex: 1 1 auto;
+  /* 220px is a sensible floor beside other controls in a toolbar. On a 320px
+     phone, inside a panel inside the page gutter, it is wider than the space
+     that exists — and a flex item's min-width is a hard floor, so the field
+     overhung the panel rather than shrinking. Below the toolbar's stacking
+     point it takes the row to itself and the floor comes off. */
   min-width: 220px;
   max-width: 640px;
+}
+@media (max-width: 620px) {
+  .field-clear {
+    flex-basis: 100%;
+    min-width: 0;
+    max-width: none;
+  }
 }
 .field-clear input {
   padding-right: 32px;
@@ -747,6 +892,17 @@ code {
   color: var(--ink);
   white-space: nowrap;
 }
+/* nowrap is right for the chips the app writes itself — `DATABASE_URL`,
+   `docker compose up -d` — which are short, known, and read worse broken in
+   half. It is wrong for inline code inside a model-authored body, where the
+   token could be a 90-character identifier or a URL with no space in it: with
+   nowrap that has nowhere to go but sideways, past the edge of a phone. Note
+   that `overflow-wrap` is inert while `white-space: nowrap` is in force, so
+   the nowrap has to be lifted first rather than merely supplemented. */
+:where(.snip, .rationale, .drawer-body, .dsec .body) code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* segmented control (markets) */
 .seg {
@@ -840,8 +996,15 @@ code {
   line-height: 1.5;
 }
 @media (max-width: 620px) {
+  /* The count moves off the title row and under it, so the title keeps the
+     full width and the action button — which is the only thing here that
+     cannot shrink — stays beside it. */
   .view-head {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin: 8px 0 14px;
+  }
+  .view-t {
+    font-size: var(--t-md);
   }
   .view-ct {
     grid-column: 1;
@@ -849,6 +1012,7 @@ code {
   .view-act {
     grid-column: 2;
     grid-row: 1;
+    align-items: center;
   }
 }
 
@@ -1070,28 +1234,70 @@ code {
   font-weight: 650;
   padding: 10px 20px;
 }
-@media (max-width: 900px) {
-  /* Release the viewport lock and let the page scroll normally when the columns
-     stack — a phone can't hold hero, form and eleven checks in one screen. */
+/* Release the viewport lock and let the page scroll normally when the columns
+   stack — a phone can't hold hero, form and eleven checks in one screen.
+
+   Two conditions, not one. The width case is the phone. The height case is a
+   laptop window dragged short, a phone turned landscape, or a browser with two
+   toolbars showing: the columns still fit side by side, but 470px of form plus
+   a two-line hero does not fit in 500px of viewport, and the lock's response to
+   that was to centre the block and push the footer off the bottom — a
+   guaranteed scroll on a layout whose whole purpose was not to have one. Below
+   640px of viewport height the lock is simply the wrong tool, so it lets go. */
+@media (max-width: 900px), (max-height: 640px) {
   .wrap.compose-wrap {
     min-height: 0;
     display: block;
-    padding: 24px 14px 64px;
+    padding: 24px var(--gutter-r) 64px var(--gutter);
+  }
+  .compose {
+    min-height: 0;
+    padding-bottom: 0;
   }
   .compose-body {
-    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     min-height: 0;
-  }
-  .compose-notice {
-    width: 100%;
   }
   .compose-form,
   .compose-form .field:has(textarea) {
     flex: 0 1 auto;
   }
+  .passes {
+    align-content: start;
+    flex: 0 1 auto;
+  }
+}
+@media (max-width: 900px) {
+  .compose-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .compose-notice {
+    width: 100%;
+  }
+  /* Tall enough to paste an asset into and see what you pasted, without the
+     field becoming the entire screen on a small phone. */
   .compose-form textarea {
-    min-height: 260px;
+    min-height: clamp(180px, 34vh, 260px);
+  }
+}
+@media (max-width: 620px) {
+  .wrap.compose-wrap {
+    padding-top: 16px;
+    padding-bottom: 40px;
+  }
+  .compose-form,
+  .passes-section {
+    padding: 16px;
+  }
+  .compose-body {
+    gap: 16px;
+  }
+  /* The soft field of light behind the hero is scaled to a wide column; at
+     phone width it is a bright wash over the first two cards rather than a
+     backdrop behind a headline. */
+  .compose::before {
+    height: 220px;
+    opacity: 0.35;
   }
 }
 
@@ -1223,6 +1429,7 @@ code {
 @media (max-width: 1100px) {
   .review-grid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
   .doc-pane {
     position: static !important;
@@ -1233,15 +1440,32 @@ code {
   .doc-pane .sheet {
     flex: 0 1 auto;
   }
+  /* …but not without limit. Side by side, an asset as long as the findings list
+     costs nothing: the two columns scroll past each other. Stacked, the sheet
+     sits entirely above the findings, so a two-thousand-word detail aid became
+     several screens of scrolling before the reviewer reached the first thing
+     they came to read. Capping the body puts the asset back to roughly a
+     screenful, with the rest reachable by scrolling inside it — the same
+     behaviour the sticky pane has on a desktop, just bounded by content height
+     instead of viewport height when the asset is short. */
+  .doc-pane .sheet-body {
+    max-height: min(58vh, 560px);
+  }
 }
 
 .doc-pane {
   position: sticky;
-  top: 82px;
+  /* Clears the masthead with a 23px breathing gap, and follows it when it grows
+     a second row on a narrow screen. */
+  top: calc(var(--mast-h) + 23px);
   /* was max-height, which let the pane shrink-wrap its text and leave most of a
      tall viewport as empty paper beside a long findings list. The asset is the
-     subject of the screen; it holds its column. */
-  height: calc(100vh - 106px);
+     subject of the screen; it holds its column.
+
+     dvh, not vh: on mobile Safari and Chrome `100vh` is the viewport with the
+     browser toolbars *retracted*, so a pane sized to it is taller than the
+     space actually on screen whenever they are showing. */
+  height: calc(100dvh - var(--mast-h) - 47px);
   display: flex;
   flex-direction: column;
 }
@@ -1280,13 +1504,26 @@ code {
 .sheet-body {
   padding: 22px 24px 28px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   font-family: var(--font-serif), Georgia, serif;
   font-size: 15px;
   line-height: 1.75;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  /* pre-wrap honours the asset's own line breaks, but will not break inside a
+     word — and promotional copy carries long ones: study URLs, hyphenated
+     compound names, registry ids. Without this they run past the sheet's edge. */
+  overflow-wrap: anywhere;
   flex: 1;
   min-height: 0;
+}
+@media (max-width: 620px) {
+  .sheet-head {
+    padding: 10px 12px;
+  }
+  .sheet-body {
+    padding: 16px 14px 20px;
+  }
 }
 
 /* an annotated claim inside the sheet */
@@ -1391,9 +1628,29 @@ code {
   border-radius: 7px;
   font-size: var(--t-sm);
 }
-@media (max-width: 560px) {
+@media (max-width: 620px) {
+  .verdict {
+    padding: 16px 15px 14px;
+  }
   .verdict h2 {
     font-size: var(--t-lg);
+    /* The headline is a generated sentence ("3 critical issues"), so it can be
+       longer than the box; let it wrap rather than sit on one clipped line, and
+       keep the glyph aligned to the first line when it does. */
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .verdict h2 .sev {
+    width: 24px;
+    height: 24px;
+    margin-top: 2px;
+  }
+  /* "Evidence dossier →" is pushed to the trailing edge by margin-left:auto,
+     which on a wrapped row leaves it alone on a line of its own hugging the
+     right. Start-aligned reads as a deliberate third element instead. */
+  .verdict-top > .quiet {
+    margin-left: 0 !important;
   }
 }
 .verdict .drug {
@@ -1565,7 +1822,10 @@ code {
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 10px;
-  scroll-margin-top: 90px;
+  /* Follows the masthead rather than assuming its desktop height — on a narrow
+     screen the bar is two rows, and a fixed 90px landed the card a full row
+     behind it. */
+  scroll-margin-top: calc(var(--mast-h) + 14px);
   transition: background 0.16s ease, border-color 0.16s ease;
 }
 .finding[data-sev="critical"] .f-title {
@@ -1605,6 +1865,20 @@ code {
 }
 .f-top:hover {
   filter: none;
+}
+/* Buttons in this app set `white-space: nowrap`, which is right for a label
+   and wrong for everything inside this one: the finding header is a whole
+   header — a generated headline sentence, a row of tags — that happens to be
+   clickable. Inherited nowrap held the headline on one line and `.finding`'s
+   `overflow: hidden` then cut it off with no ellipsis and nothing to scroll,
+   so a long finding simply lost its ending. Worse at phone width, but not a
+   phone-only bug: it clipped in a 560px desktop column too. */
+.f-top,
+.f-top * {
+  white-space: normal;
+}
+.f-title {
+  overflow-wrap: anywhere;
 }
 
 /* severity glyph — shape carries meaning, colour reinforces */
@@ -1722,9 +1996,16 @@ code {
 .f-body {
   padding: 0 15px 14px 46px;
 }
-@media (max-width: 560px) {
+/* The 46px indent lines the body up under the title, past the severity glyph.
+   It is a 31px bite out of a 290px column on a phone, which matters more than
+   the alignment does. */
+@media (max-width: 620px) {
+  .f-top {
+    padding: 12px;
+    gap: 9px;
+  }
   .f-body {
-    padding-left: 15px;
+    padding: 0 12px 12px;
   }
 }
 
@@ -1736,6 +2017,7 @@ code {
   border-left: 2px solid var(--line-strong);
   padding: 3px 0 3px 11px;
   margin: 0 0 10px;
+  overflow-wrap: anywhere;
 }
 /* The quote is a quote first; that it jumps to the mark is a quiet affordance,
    not a link shout. */
@@ -1765,6 +2047,9 @@ code {
   font-size: 13px;
   color: var(--ink-2);
   line-height: 1.62;
+  /* Model-authored prose that routinely names a trial registry id or pastes a
+     source URL inline. */
+  overflow-wrap: anywhere;
 }
 .rationale p {
   margin: 0 0 8px;
@@ -1847,6 +2132,12 @@ code {
   text-decoration: none;
   font-weight: 600;
   font-size: var(--t-sm);
+  /* Source titles come from PubMed and DailyMed and are occasionally a bare
+     URL or a single unbroken accession string. Nothing else in the card is
+     wide enough to overflow; this one is. */
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .ev a:hover {
   text-decoration: underline;
@@ -1897,8 +2188,14 @@ code {
 }
 
 /* decide */
+/* Three buttons and a shortcut legend. Every button here sets white-space:
+   nowrap (they are labels, not prose) and the row did not wrap, so on a phone
+   "Accept · Request revision · Reject" measured about 250px inside a column
+   narrower than that and ran straight off the card. Wrapping is the fix; the
+   legend below is the follow-up. */
 .decide {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   align-items: center;
   margin-top: 13px;
@@ -2017,6 +2314,11 @@ code {
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface) 45%, transparent);
 }
+@media (max-width: 620px) {
+  .empty {
+    padding: 32px 16px;
+  }
+}
 .empty .ico {
   font-size: var(--t-lg);
   opacity: 0.4;
@@ -2044,6 +2346,20 @@ code {
   margin-bottom: 14px;
   font-size: 13px;
   border: 1px solid;
+}
+/* The glyph is a fixed 1em; the body beside it is the part that has to give.
+   Without a zero floor its longest word sets a min-content width the flex item
+   refuses to go below, and a banner quoting an error string from Valyu pushed
+   past the column. */
+.banner > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 620px) {
+  .banner {
+    padding: 12px;
+    gap: 9px;
+  }
 }
 .banner.crit {
   background: var(--crit-wash);
@@ -2169,7 +2485,7 @@ code {
 }
 @media (max-width: 620px) {
   .report {
-    padding: 22px;
+    padding: 16px;
   }
 }
 /* The dossier is the artefact a reviewer hands to someone else, so it is
@@ -2210,6 +2526,19 @@ code {
   font-size: var(--t-doc);
   color: var(--ink);
   line-height: 1.72;
+  overflow-wrap: anywhere;
+}
+/* A 15.5px serif at a 74ch measure is set for a page. On a phone the measure
+   is moot — the column is narrower than 74ch either way — and the size is one
+   notch too generous for a 340px line. */
+@media (max-width: 620px) {
+  .dsec {
+    padding-top: 16px;
+  }
+  .dsec .body {
+    font-size: 14.5px;
+    line-height: 1.62;
+  }
 }
 /* The reading measure belongs to the prose, not to the container: a data table
    is the one thing in a report that should be allowed the card's full width,
@@ -2238,32 +2567,66 @@ code {
 }
 /* A markdown table is a data exhibit, not prose: it leaves the serif reading
    measure, drops to the sans/mono register the rest of the app's tables use,
-   and scrolls inside its own box so a wide comparison never widens the page. */
-.dsec .body .md-tbl {
+   and scrolls inside its own box so a wide comparison never widens the page.
+
+   Scoped to .md-tbl alone, not to `.dsec .body .md-tbl`. The class is written
+   by one place — the table override in Markdown.tsx — so the descendant part
+   was never disambiguating anything, and it silently excluded the surface
+   where DeepResearch tables actually render: the report drawer puts its
+   markdown straight into .drawer-body, with no .dsec .body around it. Every
+   rule below was therefore inert exactly where it was needed, leaving a
+   comparison table to inherit the app's `th { white-space: nowrap }` and
+   scroll ten columns sideways on a phone. */
+.md-tbl {
   width: 100%;
   margin: 14px 0 18px;
   font-family: var(--font-sans), sans-serif;
+  /* .tbl-scroll (also on this element) supplies overflow-x: auto. This is the
+     other half of the contract: a flex or grid item will not shrink below its
+     content unless told it may, so without a zero floor the "scroll container"
+     is simply as wide as the table and the page scrolls instead. */
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
-.dsec .body .md-tbl table {
+.md-tbl table {
   font-size: var(--t-sm);
   line-height: 1.45;
+  /* The global `table { width: 100% }` means "fill the column", which is right
+     until the column is a phone: five columns crushed into 347px broke every
+     header mid-word ("CREST / OR 10MG / % ACHIEV / ING GOAL") and the table
+     stopped being readable at all. `width: auto` with a 100% floor keeps the
+     fill-the-column behaviour whenever the table fits, and lets it keep its
+     natural column widths and scroll when it doesn't — which is what the
+     scroll container was put there for. */
+  width: auto;
+  min-width: 100%;
+}
+/* The drawer sets `overflow-wrap: anywhere` on the report body so a bare URL
+   in the prose cannot widen the page. Inherited into a table cell it shatters
+   ordinary words instead, one or two characters to a line. Cells are narrow by
+   nature; they wrap at word boundaries like a table always has. */
+.md-tbl th,
+.md-tbl td {
+  overflow-wrap: normal;
 }
 /* Model-written headers are sentences ("Crestor % achieving goal"), so unlike
    the app's own tables these wrap — two short header lines beat a table that
    has to be scrolled to read its last column. */
-.dsec .body .md-tbl th {
+.md-tbl th {
   white-space: normal;
   max-width: 16ch;
   line-height: 1.3;
   vertical-align: bottom;
 }
-.dsec .body .md-tbl td {
+.md-tbl td {
   vertical-align: middle;
   white-space: nowrap;
 }
 /* The first column is the row's label (a timepoint, an arm) and is the one
    cell that may legitimately wrap. */
-.dsec .body .md-tbl td:first-child {
+.md-tbl td:first-child {
   white-space: normal;
   min-width: 9ch;
   font-weight: 600;
@@ -2273,16 +2636,25 @@ code {
    chip has to be switched off there or a code block renders as a run of boxed
    fragments that refuse to wrap. */
 .dsec .body pre code,
-.dsec .body pre code * {
+.dsec .body pre code *,
+.drawer-body pre code,
+.drawer-body pre code * {
   background: none;
   border: 0;
   padding: 0;
   white-space: inherit;
   font-size: inherit;
 }
-.dsec .body pre {
+/* A fenced block is the one thing in a document that must not reflow — its
+   line breaks are content. So it scrolls in place, and is pinned to the
+   column's width so it cannot become the thing that widens the column. */
+.dsec .body pre,
+.drawer-body pre {
   margin: 12px 0;
   max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .dsec .body blockquote {
   margin: 12px 0;
@@ -2321,6 +2693,16 @@ code {
   color: var(--ink-2);
   text-decoration: none;
   transition: border-color 0.14s ease, color 0.14s ease;
+  /* Titles are truncated to 44 characters in the component, which is short
+     enough for a desktop chip row and still wider than a 320px phone. Clipping
+     is not the fix — text-overflow has no effect on an anonymous flex item, so
+     it would silently cut the title mid-word with no ellipsis to say so. The
+     chip wraps to a second line instead, which at this radius still reads as a
+     pill. */
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 a.src-chip:hover {
   border-color: var(--accent);
@@ -2330,6 +2712,7 @@ a.src-chip:hover {
   font-family: var(--font-mono), monospace;
   font-size: 9.5px;
   color: var(--ink-3);
+  flex: none;
 }
 
 /* audit */
@@ -2361,11 +2744,33 @@ a.src-chip:hover {
 }
 .audit .d {
   color: var(--ink-2);
+  /* The detail is a machine string — "12 claims · 4 datasets · retry 2" — and
+     occasionally a raw error. Unbroken, in a mono face, in a fixed-width
+     column, that is the widest thing on the results page. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Three fixed columns of mono do not survive a 300px-wide card: a timestamp
+   and a 108px step label leave nothing for the detail. It moves to its own
+   line, indented under the step it belongs to. */
+@media (max-width: 620px) {
+  .audit-row {
+    flex-wrap: wrap;
+  }
+  .audit .s {
+    min-width: 0;
+  }
+  .audit .d {
+    flex-basis: 100%;
+    padding-left: 10px;
+  }
 }
 
 /* table */
 .tbl-scroll {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
@@ -2407,6 +2812,105 @@ td.claim-c {
   font-size: 13.5px;
   min-width: 260px;
 }
+
+/* Records, not a table, on a phone.
+
+   `.tbl-scroll` is the right answer for a markdown table from a report: the
+   columns are unknown, the shape is the content, and sideways scrolling inside
+   a bordered box is a pattern people read correctly. It is the wrong answer for
+   the app's own two tables. History and Library are six known columns, one of
+   which (`.claim-c`) alone claims a 260px minimum — so on a 375px phone the
+   reviewer got a ~340px window onto a ~700px table and had to scroll right to
+   discover a verdict, then back left to see which claim it belonged to. That is
+   not reading a table; it is operating one.
+
+   So below the stacking point each row becomes a card and each cell a
+   labelled line, with the header row's text carried down per cell in
+   `data-label`. The markup stays a real <table> — it is tabular data and a
+   screen reader should still hear it as one — and only its rendering changes.
+   Opting in with a second class rather than restyling `.tbl-scroll` is what
+   keeps the report tables scrolling, which is what they should do. */
+@media (max-width: 620px) {
+  .tbl-stack {
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .tbl-stack table,
+  .tbl-stack tbody,
+  .tbl-stack tr,
+  .tbl-stack td {
+    display: block;
+    width: 100%;
+  }
+  /* The header row's labels reappear per cell via data-label, so the row
+     itself has nothing left to show. Hidden rather than removed from the
+     markup: the table is still a table to assistive tech. */
+  .tbl-stack thead {
+    display: none;
+  }
+  .tbl-stack tr {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .tbl-stack tbody tr:hover {
+    background: var(--surface);
+  }
+  .tbl-stack td {
+    border: 0;
+    padding: 4px 0;
+    display: grid;
+    grid-template-columns: 8.5ch minmax(0, 1fr);
+    gap: 10px;
+    align-items: baseline;
+    /* Several cells carry `white-space: nowrap` inline so they hold one line
+       inside a column; as a full-width line in a card there is no column to
+       hold and the value may wrap like anything else. */
+    white-space: normal !important;
+  }
+  .tbl-stack td::before {
+    content: attr(data-label);
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 650;
+  }
+  /* The claim (or asset name) is what the record *is*, so it heads the card as
+     a title rather than sitting in the label column as one field among six. */
+  .tbl-stack td.claim-c {
+    display: block;
+    min-width: 0;
+    font-size: var(--t-base);
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 0 0 8px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tbl-stack td.claim-c::before {
+    content: none;
+  }
+  .tbl-stack td.num {
+    text-align: left;
+  }
+  /* The action cell has no label to print and no value to align — it is a
+     button, and it gets the full width of the card's foot. */
+  .tbl-stack td:not([data-label]) {
+    display: block;
+    padding-top: 10px;
+  }
+  .tbl-stack td:not([data-label])::before {
+    content: none;
+  }
+  .tbl-stack td:not([data-label]) button {
+    width: 100%;
+    justify-content: center;
+  }
+}
 .vd {
   display: inline-flex;
   align-items: center;
@@ -2434,6 +2938,11 @@ td.claim-c {
   box-shadow: var(--sh-1);
   padding: 16px 18px;
   margin-bottom: 12px;
+}
+@media (max-width: 620px) {
+  .dr-card {
+    padding: 14px;
+  }
 }
 /* The report preview on the card. Clamped to three lines so every card in the
    list is the same height whatever the report's shape — the point of the list
@@ -2478,6 +2987,17 @@ td.claim-c {
   border-left: 1px solid var(--line-strong);
   box-shadow: var(--sh-3);
   animation: drawer-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Full-bleed on a phone, so the trailing-edge inset that keeps the panel
+     clear of a landscape notch is padding inside it rather than a strip of
+     scrim the reviewer can tap through by accident. */
+  padding-right: env(safe-area-inset-right, 0px);
+}
+/* At full width there is no scrim left to click, so the border that separated
+   the two has nothing to separate. */
+@media (max-width: 760px) {
+  .drawer {
+    border-left: 0;
+  }
 }
 @keyframes drawer-in {
   from {
@@ -2503,6 +3023,9 @@ td.claim-c {
   font-weight: 700;
   letter-spacing: -0.015em;
   margin: 0;
+  /* A DeepResearch report titles itself, so this is model-authored text of
+     unbounded length sitting next to a close button that must stay reachable. */
+  overflow-wrap: anywhere;
 }
 .drawer-x {
   flex: none;
@@ -2533,12 +3056,75 @@ td.claim-c {
 .drawer-tools .hint {
   margin-right: 2px;
 }
+/* The PDF link is an <a> (it opens Valyu's rendered copy in a new tab) but has
+   to sit in a row of buttons without looking like the odd one out.
+
+   Which it was: every button rule in this file is element-qualified —
+   `button.ghost`, `button.sm` — so an anchor carrying those same two classes
+   matched none of them and rendered as bare blue link text among four bordered
+   buttons. As well as looking wrong, it wrapped differently from its
+   neighbours, because an inline anchor and an inline-flex button do not
+   measure or align the same way. This gives the anchor the base button
+   treatment; the `.ghost` and `.sm` selectors below extend to it too. */
+a.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  font: inherit;
+  font-weight: 650;
+  font-size: 13px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 9px 15px;
+  cursor: pointer;
+  background: var(--accent);
+  color: var(--on-accent);
+  white-space: nowrap;
+  transition: filter 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+a.btn-link:hover {
+  filter: brightness(1.08);
+}
+a.btn-link.ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+a.btn-link.ghost:hover {
+  background: var(--sunk);
+  filter: none;
+}
+a.btn-link.sm {
+  padding: 6px 11px;
+  font-size: 12px;
+}
 /* The only scrolling region — the page behind is locked while this is open. */
 .drawer-body {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 18px 22px 30px;
+  /* Report prose cites DOIs and registry ids and pastes bare URLs; there is no
+     column to the side for them to spill into here. */
+  overflow-wrap: anywhere;
+}
+/* The drawer is the whole screen on a phone, so its own margins are the page's
+   margins — and 22px either side of a 375px screen is 12% of the report gone
+   to whitespace. The foot clears the home indicator. */
+@media (max-width: 620px) {
+  .drawer-head {
+    padding: 14px 14px 12px;
+    gap: 10px;
+  }
+  .drawer-tools {
+    padding: 10px 14px;
+    gap: 6px;
+  }
+  .drawer-body {
+    padding: 14px 14px calc(30px + env(safe-area-inset-bottom, 0px));
+  }
 }
 .dr-top {
   display: flex;
@@ -2551,6 +3137,7 @@ td.claim-c {
   font-weight: 650;
   margin: 0;
   letter-spacing: -0.005em;
+  overflow-wrap: anywhere;
 }
 .dr-meta {
   display: flex;
@@ -2610,10 +3197,20 @@ td.claim-c {
 .drreq-row:first-of-type {
   border-top: 0;
 }
-@media (max-width: 560px) {
+@media (max-width: 620px) {
+  .drreq {
+    padding: 12px;
+  }
   .drreq-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
+  }
+  /* An inline-flex button stretched to a full-width column item keeps
+     left-aligning its label, which reads as a mis-set block rather than a
+     button. */
+  .drreq-row button {
+    justify-content: center;
   }
 }
 
@@ -2679,6 +3276,7 @@ td.claim-c {
   right: 0;
   z-index: 50;
   width: 232px;
+  max-width: calc(100vw - 24px);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -2771,6 +3369,48 @@ td.claim-c {
   white-space: normal;
 }
 
+/* On a phone the popover stops being anchored to its button and becomes a
+   bottom sheet.
+
+   Two independent ways the anchored version failed, and neither is fixable by
+   capping its size.
+
+   Horizontally: "Load sample" is the second control in the actions row, so the
+   menu's left edge starts wherever that button happens to begin — measured at
+   151px on a 375px screen, not at the page gutter. Any width over 224px then
+   runs off the right, and because `main` clips rather than scrolls the excess
+   was cut off silently: 67px of every sample's description, gone, with nothing
+   to scroll to reach it. Right-aligning only moves the overflow to the left
+   edge, because the button is 126px wide and the menu is 320px.
+
+   Vertically: the menu opens upward, which is right on a tall screen (the
+   button sits near the bottom of the form, so downward would be clipped) and
+   wrong on a short one. On a landscape phone — 844×390 — with the trigger
+   centred at y 175, the 277px menu ran from y −110 to 167: the first sample
+   off the top of the screen, unreachable. The original rule solved the
+   tall-viewport clip and created a short-viewport one, which is why the height
+   condition below is a separate term rather than a narrower width.
+
+   A viewport-anchored sheet has neither arithmetic: it is pinned to the screen
+   edges and cannot miss. It is also where a thumb already is, and it caps its
+   own height so a short viewport scrolls the list instead of hiding it. Safe on
+   `position: fixed` — `main` uses `overflow-x: clip`, which does not create a
+   containing block, so the sheet escapes the clip that was eating it. */
+@media (max-width: 620px), (max-height: 520px) {
+  .sample-menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    top: auto;
+    width: auto;
+    max-width: none;
+    max-height: min(70dvh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
 /* Modal. Overlay dims and blurs the desk; the dialog is a plain surface card,
    deliberately close in weight to the toast and panel it lives among. */
 .auth-overlay {
@@ -2781,6 +3421,11 @@ td.claim-c {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  /* The modal is short, but on a landscape phone the viewport is shorter: it
+     has to be able to scroll rather than have its footer cut off by the
+     bottom edge. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: color-mix(in srgb, var(--ink) 42%, transparent);
   backdrop-filter: blur(3px);
   animation: auth-fade 0.16s ease;
@@ -2794,12 +3439,24 @@ td.claim-c {
   position: relative;
   width: 100%;
   max-width: 420px;
+  /* Not `auto`: as a flex item in a scrolling, centring overlay the dialog
+     would otherwise stretch and lose its own margins. */
+  margin: auto;
+  flex: none;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   box-shadow: var(--sh-3);
   padding: 26px 24px 20px;
   animation: slide-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (max-width: 480px) {
+  .auth-modal {
+    padding: 22px 16px 16px;
+  }
+  .auth-modal-head h2 {
+    font-size: var(--t-md);
+  }
 }
 .auth-modal-x {
   position: absolute;
@@ -2865,7 +3522,10 @@ td.claim-c {
 
 /* Callback page — the interstitial while the code is exchanged for tokens. */
 .auth-callback {
-  min-height: 100vh;
+  /* dvh, not vh: on a phone `100vh` is measured against retracted browser
+     toolbars, so a "centred, one screen" interstitial is taller than the screen
+     and scrolls. */
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,15 +1,5 @@
 import { Workspace } from "../../Workspace";
-
-const DESCRIPTION =
-  "Open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence — every finding cited.";
-
-const SOCIAL_IMAGE = {
-  url: "/opengraph-image",
-  width: 1200,
-  height: 630,
-  alt: "OpenMLR — open-source, Valyu-grounded MLR review. Every promotional claim checked against real biomedical evidence.",
-  type: "image/png",
-};
+import { routeMetadata } from "../../route-metadata";
 
 /**
  * A saved review at its own URL.
@@ -22,27 +12,16 @@ const SOCIAL_IMAGE = {
  */
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const reviewPath = `/review/${id}`;
-
-  return {
+  /* Only the canonical URL is per-id. The title and description stay generic on
+     purpose: a review holds a client's unapproved promotional copy, and this
+     metadata is served to any crawler that follows the link. The card itself
+     (opengraph-image.tsx in this folder) is generic for the same reason. */
+  return routeMetadata({
     title: "Review",
-    alternates: { canonical: reviewPath },
-    openGraph: {
-      type: "website",
-      siteName: "OpenMLR",
-      title: "OpenMLR review",
-      description: DESCRIPTION,
-      url: reviewPath,
-      locale: "en_US",
-      images: [SOCIAL_IMAGE],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: "OpenMLR review",
-      description: DESCRIPTION,
-      images: [SOCIAL_IMAGE],
-    },
-  };
+    description:
+      "A completed MLR review: every extracted claim with its verdict, the evidence behind it and the reviewer's decision — every finding cited.",
+    path: `/review/${id}`,
+  });
 }
 
 export default async function ReviewRoute({ params }: { params: Promise<{ id: string }> }) {

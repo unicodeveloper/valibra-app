@@ -347,6 +347,9 @@ export interface DeepResearchCreateOptions {
   search?: { searchType?: "all" | "web" | "proprietary" };
   /** Valyu emails this address when the task finishes. */
   alertEmail?: string;
+  /** Ask Valyu to render the report as well as return markdown. Without "pdf"
+   *  here the finished task carries no pdf_url — it defaults to markdown only. */
+  outputFormats?: string[];
 }
 
 /**
@@ -371,6 +374,7 @@ export async function valyuDeepResearchCreate(
   }
   // Same camelCase→snake_case rewrite the SDK does internally.
   if (options.alertEmail !== undefined) payload.alert_email = options.alertEmail;
+  if (options.outputFormats !== undefined) payload.output_formats = options.outputFormats;
 
   return viaProxy(credential.accessToken, "/v1/deepresearch/tasks", "POST", payload);
 }

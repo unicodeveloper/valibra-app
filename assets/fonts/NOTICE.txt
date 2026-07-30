@@ -1,0 +1,28 @@
+Fonts vendored for social-card rendering
+========================================
+
+These are the same three families the app itself loads from Google Fonts at
+runtime (see src/app/layout.tsx). They are duplicated here as static, subset
+files because the social cards are rasterised on the server by Satori, which
+needs raw TTF/OTF bytes and cannot read the woff2 that next/font serves to
+browsers. Nothing in the browser bundle references this directory.
+
+Each file has been subset to Latin-1 plus the punctuation the cards use
+(en/em dash, middle dot, curly quotes, section sign, arrow), which is why they
+are ~25KB each rather than ~250KB. Regenerate with:
+
+  python3 -m fontTools.subset <original.ttf> \
+    --unicodes="U+0020-007E,U+00A0,U+00A7,U+00B0,U+00B7,U+00D7,U+2010-2015,U+2018-201D,U+2022,U+2026,U+2030,U+2039,U+203A,U+2192,U+00A9,U+00AE,U+2122" \
+    --layout-features='kern,liga,tnum' --output-file=<out.ttf>
+
+  PublicSans-Regular.ttf      Public Sans 2.001 — https://github.com/uswds/public-sans
+  PublicSans-Bold.ttf         (c) 2015 Impallari Type, modified by GSA / USWDS
+
+  SourceSerif4-Regular.otf    Source Serif 4.005 — https://github.com/adobe-fonts/source-serif
+                              (c) 2014-2023 Adobe
+
+  IBMPlexMono-Medium.ttf      IBM Plex Mono 2.3 — https://github.com/IBM/plex
+                              (c) 2017 IBM Corp.
+
+All three are licensed under the SIL Open Font License, Version 1.1, the full
+text of which is in OFL-1.1.txt.

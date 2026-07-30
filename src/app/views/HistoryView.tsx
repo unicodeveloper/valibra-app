@@ -110,8 +110,12 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
         </div>
       )}
 
+      {/* tbl-stack: below 620px each row becomes a card and each cell a
+          labelled line, driven by the data-label attributes below — a
+          six-column table does not fit a phone, and scrolling it sideways
+          separates a review from the count that belongs to it. */}
       {reviews && reviews.length > 0 && (
-        <div className="tbl-scroll" style={{ marginTop: 14 }}>
+        <div className="tbl-scroll tbl-stack" style={{ marginTop: 14 }}>
           <table>
             <thead>
               <tr>
@@ -128,11 +132,22 @@ export function HistoryView({ onOpen }: { onOpen: (id: string) => void }) {
                 const done = r.finding_count > 0 && r.decided_count >= r.finding_count;
                 return (
                   <tr key={r.id}>
-                    <td className="claim-c">{r.asset_name}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{r.drug_name || "—"}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{when(r.created_at)}</td>
-                    <td className="num">{r.finding_count}</td>
-                    <td className="num">
+                    {/* data-label carries the column header down into the cell
+                        for the stacked layout. The action cell deliberately has
+                        none — it is a button, not a labelled value. */}
+                    <td className="claim-c" data-label="Asset">
+                      {r.asset_name}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }} data-label="Drug">
+                      {r.drug_name || "—"}
+                    </td>
+                    <td style={{ whiteSpace: "nowrap" }} data-label="Reviewed">
+                      {when(r.created_at)}
+                    </td>
+                    <td className="num" data-label="Findings">
+                      {r.finding_count}
+                    </td>
+                    <td className="num" data-label="Decided">
                       <span className={`vd ${done ? "supported" : "partial"}`}>
                         <span aria-hidden="true">{done ? "✓" : "●"}</span>
                         {r.decided_count}/{r.finding_count}
