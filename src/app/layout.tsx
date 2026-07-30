@@ -140,7 +140,9 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
-    shortcut: "/brand/openmlr-favicon-inverted-v2.ico",
+    /* ?v=3 is a cache-buster: the .ico frames were rebuilt to match the PNGs
+       above, and Chrome keeps favicons in a store that ignores no-cache. */
+    shortcut: "/brand/openmlr-favicon-inverted-v2.ico?v=3",
     apple: [{ url: "/brand/openmlr-apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   /* Open Graph is the card Slack, LinkedIn, Discord, WhatsApp and iMessage all
