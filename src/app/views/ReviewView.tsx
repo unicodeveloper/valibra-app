@@ -776,7 +776,7 @@ export function ReviewView({
                   <div>
                     <p className="b-t">That was your free review</p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
-                      Sign in with Valyu to save it to your library and run more.
+                      Sign in to save it to your library and run more.
                     </p>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button
@@ -788,7 +788,7 @@ export function ReviewView({
                           })
                         }
                       >
-                        Sign in with Valyu
+                        Continue
                       </button>
                     </div>
                   </div>

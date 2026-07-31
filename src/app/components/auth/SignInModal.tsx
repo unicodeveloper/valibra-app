@@ -95,7 +95,7 @@ export function SignInModal() {
         </button>
 
         <div className="auth-modal-head">
-          <h2 id="auth-modal-title">{prompt?.title ?? "Sign in with Valyu"}</h2>
+          <h2 id="auth-modal-title">{prompt?.title ?? "Sign in"}</h2>
         </div>
 
         <p className="auth-modal-lede">
