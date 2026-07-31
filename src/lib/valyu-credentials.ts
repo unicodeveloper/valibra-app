@@ -110,7 +110,7 @@ export function retrievalReadiness(): { ok: true } | { ok: false; status: number
     return {
       ok: false,
       status: 401,
-      error: "Sign in with Valyu to run a review — it uses your own Valyu credits.",
+      error: "Sign in to run a review — it runs on your own Valyu credits.",
     };
   }
 
@@ -299,7 +299,7 @@ export async function withPersistenceScope(
   const token = bearerToken(req);
   if (!token && !isSelfHostedMode()) {
     return Response.json(
-      { error: "Sign in with Valyu to see your reviews.", requiresReauth: true },
+      { error: "Sign in to see your reviews.", requiresReauth: true },
       { status: 401 },
     );
   }

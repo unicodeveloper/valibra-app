@@ -50,7 +50,7 @@ export function ResearchView({
       <header className="view-head">
         <h2 className="view-t">Deep research</h2>
         <p className="view-sub">
-          For checks whose authoritative source is a DeepResearch-only Valyu dataset: FDA Device
+          For checks whose authoritative source is a deep-research-only dataset: FDA Device
           Events (MAUDE), the NPI Registry, WHO ICD and CDC surveillance. These run async over a
           few minutes; keep working and you&apos;ll be notified when a report lands. Targeted reports
           are estimated at 1-4 minutes depending on dataset.

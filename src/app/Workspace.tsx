@@ -339,7 +339,7 @@ export function Workspace({
         const data = await r.json();
         if (!r.ok) {
           if (handleAuthFailure(r.status, data)) {
-            throw new Error("Please sign in with Valyu to start deep research.");
+            throw new Error("Please sign in to start deep research.");
           }
           throw new Error(data.error || "Failed to start deep research.");
         }

@@ -85,7 +85,7 @@ function DrCard({ task: t, onOpen }: { task: DrTask; onOpen: () => void }) {
 
       {!done && (
         <p className="hint" style={{ marginTop: 10 }}>
-          Running on Valyu DeepResearch. This can take a few minutes — you can navigate away and
+          Running deep research. This can take a few minutes — you can navigate away and
           you&apos;ll be notified when it&apos;s ready.
         </p>
       )}

@@ -24,9 +24,9 @@ export function SignInGate({ title, children }: { title: string; children: React
     <div className="wrap narrow">
       <div className="empty" style={{ marginTop: 32 }}>
         <h3>{title}</h3>
-        <p>Sign in with your Valyu account to continue. Your work stays scoped to you.</p>
+        <p>Sign in to continue. Your work stays scoped to you.</p>
         <button style={{ marginTop: 14 }} onClick={() => openSignInModal()}>
-          Sign in with Valyu
+          Continue
         </button>
       </div>
     </div>

@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   // the billing gate; self-hosted has no auth and runs on its own key.)
   if (!isSelfHostedMode() && !bearerToken(req)) {
     return NextResponse.json(
-      { error: "Sign in with Valyu to draft a suggestion.", requiresReauth: true },
+      { error: "Sign in to draft a suggestion.", requiresReauth: true },
       { status: 401 },
     );
   }

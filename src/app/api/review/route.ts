@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     if (!trialAvailable()) {
       return NextResponse.json(
         {
-          error: "Sign in with Valyu to run a review. It uses your own Valyu credits.",
+          error: "Sign in to run a review — it runs on your own Valyu credits.",
           requiresReauth: true,
         },
         { status: 401 },

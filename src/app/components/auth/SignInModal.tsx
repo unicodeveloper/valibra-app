@@ -100,7 +100,7 @@ export function SignInModal() {
 
         <p className="auth-modal-lede">
           {prompt?.lede ??
-            "OpenMLR checks every claim against real biomedical evidence through Valyu."}
+            "OpenMLR checks every claim against real biomedical evidence."}
         </p>
 
         {error && (

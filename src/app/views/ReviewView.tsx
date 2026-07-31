@@ -267,13 +267,13 @@ export function ReviewView({
             title: "You've seen it work",
             lede:
               data.error ||
-              "Connect your Valyu account to run more reviews and save your work.",
+              "Sign in to run more reviews and save your work.",
           });
           return;
         }
         // An expired/absent session reopens sign-in rather than showing a raw error.
         if (handleAuthFailure(res.status, data)) {
-          setError("Please sign in with Valyu to run a review.");
+          setError("Please sign in to run a review.");
           return;
         }
         throw new Error(data.error || `Review failed (${res.status}).`);
@@ -420,7 +420,7 @@ export function ReviewView({
       if (!useAuthStore.getState().isAuthenticated) {
         useAuthStore.getState().openSignInModal({
           title: "Save your review",
-          lede: "Connect your Valyu account to keep your decisions and save this review to your library.",
+          lede: "Sign in to keep your decisions and save this review to your library.",
         });
         return;
       }
@@ -545,7 +545,7 @@ export function ReviewView({
     if (useAuthStore.getState().isAuthenticated) return true;
     useAuthStore.getState().openSignInModal({
       title: "Save & export",
-      lede: "Connect your Valyu account to export this review and save it to your library.",
+      lede: "Sign in to export this review and save it to your library.",
     });
     return false;
   }
@@ -784,7 +784,7 @@ export function ReviewView({
                         onClick={() =>
                           useAuthStore.getState().openSignInModal({
                             title: "Save your review",
-                            lede: "Connect your Valyu account to run more reviews and save your work.",
+                            lede: "Sign in to run more reviews and save your work.",
                           })
                         }
                       >
@@ -806,7 +806,7 @@ export function ReviewView({
                       <strong>Top up the account and re-run before signing off.</strong>
                     </p>
                     <p style={{ margin: 0, color: "var(--ink-2)", fontSize: 12.5 }}>
-                      Valyu reported: {result.retrievalHalt}
+                      Reported: {result.retrievalHalt}
                     </p>
                     <div className="row" style={{ marginTop: 10 }}>
                       <button className="sm" onClick={() => runReview(true)}>

@@ -69,10 +69,10 @@ export async function checkAnonQuota(fingerprint: string | null, ip: string): Pr
 export function refusalMessage(reason: AnonRefusal): string {
   switch (reason) {
     case "signup":
-      return "You've used your free review. Connect your Valyu account to run more and save your work.";
+      return "You've used your free review. Sign in to run more and save your work.";
     case "ip_rate":
-      return "Too many free reviews from this network today. Sign in with Valyu to keep going.";
+      return "Too many free reviews from this network today. Sign in to keep going.";
     case "budget":
-      return "The free trial is at capacity right now. Sign in with Valyu to run yours.";
+      return "The free trial is at capacity right now. Sign in to run yours.";
   }
 }
