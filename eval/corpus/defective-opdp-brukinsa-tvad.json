@@ -1,0 +1,16 @@
+{
+  "id": "defective-opdp-brukinsa-tvad",
+  "kind": "defective",
+  "name": "Brukinsa DTC broadcast ad claims (OPDP untitled letter)",
+  "provenance": "Claims quoted VERBATIM by FDA OPDP in its 05/12/2026 Untitled Letter to BeOne Medicines USA (NDA 218785, MA 38) re: DTC broadcast advertisement 0525-BRU-PRC-138. Only the textual claims are reproduced here; the letter's dual-modality and visual-distraction findings concern broadcast presentation and are out of scope for a text reviewer. VERBATIM CHECK 2026-08-04: every claim line was diffed against the letter text. FDA quotes some lines as fragments embedded in narrative prose and inserts bracketed expansions ([Bruton's tyrosine kinase inhibitor], [atrial fibrillation], [chronic lymphocytic leukemia]); those brackets are removed here to reconstruct the spoken ad copy, and 'might do better with Brukinsa' is given a subject to make it a sentence. Everything else is word-for-word.",
+  "fdaFinding": "Misleadingly suggests a superior safety profile \u2014 particularly lower risk of cardiovascular events including atrial fibrillation vs ibrutinib \u2014 and that Brukinsa may be the 'best' CLL treatment, when this has not been demonstrated: ALPINE was not sufficiently powered to show a clinically meaningful difference in atrial fibrillation/flutter between arms. Also overstates quality-of-life benefit; the SEQUOIA/ALPINE patient-reported outcomes were open-label, not prespecified, not multiplicity-controlled, and descriptive only.",
+  "assetText": "BRUKINSA (zanubrutinib) capsules and tablets\n\nThere's a lot to consider when finding the best CLL treatment for you. Brukinsa brings clarity to your path ahead.\n\nBrukinsa is the only BTKi proven superior to both another BTKi and to chemotherapy.\n\nAnd Brukinsa had low rates of cardiovascular events including afib.\n\nCardiovascular side effects ~2 years: 10% BRUKINSA vs 6% BR (grade 1-2); 21% BRUKINSA vs 30% ibrutinib (overall). Rate of atrial fibrillation (all grades): 3% BRUKINSA and BR (~2 years) 7% BRUKINSA vs 17% ibrutinib (42.5 months).\n\nPatients might do better with Brukinsa.\n\nSee your future clearly again.\n\n. . . CLEARLY BRUKINSA.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [],
+    "flaggedClaims": [
+      "only BTKi proven superior",
+      "low rates of cardiovascular events"
+    ]
+  }
+}

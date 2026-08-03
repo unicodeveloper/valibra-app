@@ -13,6 +13,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "db:init": "node scripts/db-init.mjs",
+    "eval": "node scripts/eval.mjs",
     "dev:reset-trial": "node scripts/reset-trial.mjs"
   },
   "dependencies": {

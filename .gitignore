@@ -29,3 +29,7 @@ npm-debug.log*
 *.tsbuildinfo
 *.html
 *.md
+
+# eval: keep the current scoreboard, not every timestamped run
+eval/results/*.json
+!eval/results/latest.json

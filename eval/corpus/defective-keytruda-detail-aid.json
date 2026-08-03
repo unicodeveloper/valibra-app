@@ -1,0 +1,17 @@
+{
+  "id": "defective-keytruda-detail-aid",
+  "kind": "defective",
+  "name": "Keytruda NSCLC detail aid",
+  "provenance": "SAMPLE_ASSETS.keytruda. Engineered defects: 'benefit across all comers regardless of biomarker' contradicting PD-L1 selection, first-in-class/no-comparable-alternative novelty claim, 'dozens of tumor types' off-label breadth.",
+  "assetText": "KEYTRUDA (pembrolizumab): Redefining survival in advanced non-small cell lung cancer\n\n- In first-line metastatic NSCLC, KEYTRUDA plus chemotherapy significantly improved overall survival versus chemotherapy alone.\n- KEYTRUDA is the first-in-class PD-1 inhibitor, a breakthrough with no comparable alternative.\n- It works best in patients whose tumors express PD-L1, but delivers benefit across all comers regardless of biomarker status.\n- By blocking the PD-1 pathway, KEYTRUDA restores the immune system's ability to find and fight cancer cells.\n- Proven to extend life across dozens of tumor types.\n- Well tolerated, with a manageable safety profile.\n\nAsk your oncologist about KEYTRUDA.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [
+      "ip"
+    ],
+    "flaggedClaims": [
+      "no comparable alternative",
+      "all comers regardless of biomarker status"
+    ]
+  }
+}

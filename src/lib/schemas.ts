@@ -97,6 +97,45 @@ export const VerificationSchema = z.object({
 });
 export type Verification = z.infer<typeof VerificationSchema>;
 
+/**
+ * What kind of thing was pasted in.
+ *
+ * Fair balance is a rule about *promotional materials*: it asks whether safety
+ * information is presented proportionately to benefit claims. Applied to
+ * anything else it is structurally guaranteed to fail — a labeling excerpt, a
+ * standalone ISI, a single claim or an endpoint summary can never be "balanced",
+ * because there is nothing to balance or nothing to balance it against. Running
+ * it anyway flagged every clean asset in the eval corpus, and punished exactly
+ * the paste-a-paragraph workflow reviewers use most.
+ *
+ * So we classify the asset first and gate the promotional-materials checks on
+ * it. The model reports the facts; which checks apply is decided in code, where
+ * it can be read and argued with.
+ */
+export const AssetKindSchema = z.enum([
+  "promotional", // a promotional piece: sales aid, detail aid, ad, banner, patient brochure
+  "isi_only", // Important Safety Information / safety copy standing on its own
+  "labeling", // prescribing information or approved labeling text
+  "fragment", // a single claim, sentence, or short excerpt — not a complete piece
+  "scientific", // publication text, abstract, data summary, congress material
+]);
+export type AssetKind = z.infer<typeof AssetKindSchema>;
+
+export const AssetProfileSchema = z.object({
+  kind: AssetKindSchema,
+  makesBenefitClaims: z
+    .boolean()
+    .describe("Does the asset assert efficacy, benefit, or superiority to promote the product?"),
+  hasSafetySection: z
+    .boolean()
+    .describe("Does the asset contain a safety block (ISI, warnings, contraindications, side effects)?"),
+  isCompletePiece: z
+    .boolean()
+    .describe("Is this a complete, self-contained asset rather than an excerpt or fragment?"),
+  rationale: rationale(),
+});
+export type AssetProfile = z.infer<typeof AssetProfileSchema>;
+
 /** F5 — fair-balance / ISI check against the live DailyMed label. */
 export const FairBalanceSchema = z.object({
   hasSafetyContext: z
@@ -258,7 +297,20 @@ export interface DrRequired {
   feature: string;
   reason: string;
 }
-export type Severity = "info" | "warning" | "critical";
+/**
+ * Severity has four tiers, not three, because "this claim is wrong" and "we
+ * could not substantiate this claim" are different facts about different
+ * things. The first is a defect in the copy. The second is a gap in what
+ * retrieval found — often because the asset's own reference wasn't in the
+ * datasets we searched, or because the deciding passage sat outside the
+ * retrieved excerpt.
+ *
+ * Collapsing them (every abstention graded `critical`) is what makes a clean,
+ * label-faithful asset come back covered in red. `unverified` keeps the
+ * abstention visible and actionable — attach a reference — without dressing it
+ * up as a finding against the copy.
+ */
+export type Severity = "info" | "warning" | "unverified" | "critical";
 
 export interface Finding {
   id: string;
@@ -301,6 +353,8 @@ export interface ReviewResult {
     string,
     { evidence: Evidence[]; verification: Verification; error: string | null }
   >;
+  /** What kind of asset this is — gates the promotional-materials checks (F5/F8). */
+  assetProfile: AssetProfile | null;
   fairBalance: FairBalance | null;
   offLabel: OffLabel | null;
   adverseEvents: AdverseEventCheck | null;

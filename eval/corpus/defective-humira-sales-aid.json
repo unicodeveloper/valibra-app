@@ -1,0 +1,18 @@
+{
+  "id": "defective-humira-sales-aid",
+  "kind": "defective",
+  "name": "Humira RA sales aid",
+  "provenance": "SAMPLE_ASSETS.humira. Engineered defects: omitted boxed warning (serious infections/malignancy), unsupported 'no meaningful safety trade-offs', #1-biologic market claim.",
+  "assetText": "HUMIRA (adalimumab): Proven relief across moderate-to-severe rheumatoid arthritis\n\n- HUMIRA, with methotrexate, significantly reduces the signs and symptoms of moderate-to-severe rheumatoid arthritis and slows structural joint damage.\n- In clinical trials, up to twice as many patients achieved an ACR50 response versus methotrexate alone.\n- As the #1 prescribed biologic worldwide, HUMIRA is trusted by more rheumatologists than any other therapy.\n- HUMIRA works by blocking TNF-alpha, a key driver of the inflammatory process.\n- Now proven to keep patients in remission for years, with no meaningful safety trade-offs.\n- A convenient self-administered injection every other week.\n\nTalk to your doctor about starting HUMIRA today.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [
+      "safety-omission",
+      "market-claim"
+    ],
+    "flaggedClaims": [
+      "no meaningful safety trade-offs",
+      "#1 prescribed biologic"
+    ]
+  }
+}

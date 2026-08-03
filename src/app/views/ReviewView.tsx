@@ -1212,7 +1212,7 @@ function Verdict({
   onGenerateDossier,
 }: {
   result: ReviewResult;
-  counts: { critical: number; warning: number; info: number };
+  counts: { critical: number; warning: number; unverified: number; info: number };
   unchecked: boolean;
   decided: number;
   total: number;
@@ -1229,13 +1229,18 @@ function Verdict({
     setSevFilter(n);
   }
 
+  // An asset with nothing but unverified claims is not "clean" — nothing was
+  // established — but it is emphatically not an asset with issues either, and
+  // saying "N issues" about it is the false-positive impression in one line.
   const headline = unchecked
     ? "Not checked"
     : counts.critical > 0
       ? `${counts.critical} critical issue${counts.critical === 1 ? "" : "s"}`
       : counts.warning > 0
         ? "No critical issues"
-        : "Clean. Nothing flagged";
+        : counts.unverified > 0
+          ? `No issues found · ${counts.unverified} claim${counts.unverified === 1 ? "" : "s"} unverified`
+          : "Clean. Nothing flagged";
 
   const sev: Severity = unchecked
     ? "warning"
@@ -1243,7 +1248,9 @@ function Verdict({
       ? "critical"
       : counts.warning > 0
         ? "warning"
-        : "info";
+        : counts.unverified > 0
+          ? "unverified"
+          : "info";
 
   return (
     <div className="verdict" data-sev={unchecked ? "muted" : sev}>
@@ -1282,6 +1289,14 @@ function Verdict({
           glyph={SEV_GLYPH.warning}
           n={counts.warning}
           label="to review"
+        />
+        <FilterChip
+          cls="unv"
+          on={sevFilter.has("unverified")}
+          onClick={() => toggleSev("unverified")}
+          glyph={SEV_GLYPH.unverified}
+          n={counts.unverified}
+          label="unverified"
         />
         <FilterChip
           cls="ok"

@@ -1,0 +1,13 @@
+{
+  "id": "defective-opdp-breztri-salesaid",
+  "kind": "defective",
+  "name": "Breztri professional sales aid (OPDP warning letter)",
+  "provenance": "Claims quoted VERBATIM by FDA OPDP in its 08/04/2023 Warning Letter to AstraZeneca (MARCS-CMS 664789, NDA 212122, MA 385) re: professional sales aid US-68433. FDA determined these claims misbrand Breztri. Expected findings are FDA's determination, not the corpus author's judgment. https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/warning-letters/astrazeneca-pharmaceuticals-lp-664789-08042023",
+  "fdaFinding": "Overstates efficacy. (1) ACM was one of multiple secondary endpoints in ETHOS; the study failed to show statistical significance on endpoints higher in the analysis hierarchy, so no conclusions can be drawn from the ACM data; abrupt ICS withdrawal was a further confounder. (2) The p=0.02 for the Breztri vs ICS/LABA severe-exacerbation comparison exceeded the prespecified critical value of 0.008, so the result was NOT statistically significant despite p<0.05.",
+  "assetText": "BREZTRI AEROSPHERE (budesonide, glycopyrrolate, and formoterol fumarate) inhalation aerosol\n\nDIFFERENCE OBSERVED IN TIME TO ALL-CAUSE MORTALITY (OVER 52 WEEKS)\n\nSECONDARY ENDPOINT STUDY 1: Time to all-cause mortality in the ITT population\n\nAn observed relative difference with BREZTRI vs LAMA/LABA was shown in data published in 2020/2021, including in the New England Journal of Medicine.\n\n49% Observed relative difference with BREZTRI vs LAMA/LABA\n\nIn a 52-week study where patients had a history of exacerbations within the last year, BREZTRI was the ONLY triple therapy vs ICS/LABA to show a significant reduction in severe exacerbations.\n\n20% EXACERBATION REDUCTION VS ICS/LABA; rate ratio: 0.80; P=0.02\n\nBREZTRI AEROSPHERE is indicated for the maintenance treatment of patients with chronic obstructive pulmonary disease (COPD).",
+  "expect": {
+    "maxCritical": null,
+    "categories": [],
+    "flaggedClaims": ["49% Observed relative difference", "significant reduction in severe exacerbations"]
+  }
+}

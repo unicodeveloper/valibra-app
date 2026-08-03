@@ -1,0 +1,8 @@
+{
+  "id": "clean-metformin-dosing",
+  "kind": "clean",
+  "name": "Metformin indication and dosing",
+  "provenance": "On-label indication, dosing and boxed-warning copy for metformin, written as labeling rather than promotion. Includes the boxed warning so fair balance should not fire.",
+  "assetText": "GLUCOPHAGE (metformin hydrochloride) tablets\n\nWARNING: LACTIC ACIDOSIS\nPostmarketing cases of metformin-associated lactic acidosis have resulted in death, hypothermia, hypotension, and resistant bradyarrhythmias. Metformin should be discontinued in patients with conditions associated with hypoxemia, dehydration, or sepsis.\n\nGlucophage is indicated as an adjunct to diet and exercise to improve glycemic control in adults and pediatric patients 10 years of age and older with type 2 diabetes mellitus.\n\nThe recommended starting dose is 500 mg twice daily or 850 mg once daily, given with meals. Dosage increases should be made in increments of 500 mg weekly or 850 mg every 2 weeks, up to a maximum of 2550 mg per day.\n\nGlucophage is contraindicated in patients with severe renal impairment and in patients with acute or chronic metabolic acidosis, including diabetic ketoacidosis.\n\nThe most common adverse reactions are diarrhea, nausea, vomiting, flatulence, and abdominal discomfort.",
+  "expect": { "maxCritical": 0, "categories": [] }
+}

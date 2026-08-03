@@ -1,0 +1,11 @@
+{
+  "id": "clean-nubeqa-ppi-risk",
+  "kind": "clean",
+  "name": "Nubeqa approved Patient Information risk text",
+  "provenance": "FDA-APPROVED Patient Information for NUBEQA, section 'What are the possible side effects of NUBEQA?', taken VERBATIM from the current DailyMed SPL (setid 1a7cb212-56e4-4b9d-a73d-bfee7fe4735e, Bayer HealthCare Pharmaceuticals). Two of these sentences were also quoted by FDA OPDP in its 04/28/2026 Untitled Letter to Bayer (NDA 212099, MA 997/1034) as the benchmark the sponsor's TV ad failed to convey. This is FDA-approved patient labeling: criticals on it are false positives by definition. CORRECTED 2026-08-04: the first version of this asset reconstructed the surrounding sentences from memory rather than the source, and got them materially wrong ('go to the nearest emergency room' for 'get medical help right away'; 'Seizure has happened in some people' for 'may increase your risk of having a seizure'). Replaced with the real SPL text. The corresponding defective asset (the TV ad) is deliberately absent: FDA quoted only one audio line from it, and reconstructing the rest would be authoring.",
+  "assetText": "NUBEQA (darolutamide) tablets\n\nWhat are the possible side effects of NUBEQA?\n\nNUBEQA may cause serious side effects, including:\n\nHeart disease. Blockage of the arteries in the heart (ischemic heart disease) that can lead to death has happened in some people during treatment with NUBEQA. Your healthcare provider will monitor you for signs and symptoms of heart problems during your treatment with NUBEQA. Call your healthcare provider or get medical help right away if you get chest pain or discomfort at rest or with activity, or shortness of breath during your treatment with NUBEQA.\n\nSeizure. Treatment with NUBEQA may increase your risk of having a seizure. You should avoid activities where a sudden loss of consciousness could cause serious harm to yourself or others. Tell your healthcare provider right away if you have loss of consciousness or seizure during treatment with NUBEQA.\n\nThe most common side effects of NUBEQA include: increase in liver function tests, decreased white blood cells (neutropenia), feeling more tired than usual.",
+  "expect": {
+    "maxCritical": 0,
+    "categories": []
+  }
+}

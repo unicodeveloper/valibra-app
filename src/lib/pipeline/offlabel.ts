@@ -27,8 +27,17 @@ export function checkOffLabel(claims: Claim[], label: Evidence[]): Promise<OffLa
       "You detect off-label promotion. Using ONLY the supplied FDA label excerpts as the " +
       "approved indication and dosing, flag any claim that promotes use beyond what the label " +
       "approves (unapproved indication, population, or dosing; unsupported superiority framed as " +
-      "approved). Reference each flagged claim by its id. If the label text is insufficient to " +
-      "decide, return status 'unclear'. Do not invent approved uses.",
+      "approved). Reference each flagged claim by its id. Do not invent approved uses.\n" +
+      // The excerpts are retrieved windows, not the whole SPL. Read literally, a
+      // claim quoting the real indication verbatim gets flagged as off-label
+      // whenever the window happens to stop short of it — which is what flagged a
+      // faithful atorvastatin indication statement as promoting unapproved uses.
+      "These excerpts are RETRIEVED WINDOWS of the label, not the complete document. Sections " +
+      "outside them were not fetched. Flag a claim as off-label only when the excerpts " +
+      "AFFIRMATIVELY establish a conflict — the label approves something narrower and the claim " +
+      "plainly exceeds it. Never flag a claim merely because the excerpts do not mention it: " +
+      "silence is missing text, not a missing approval. When the excerpts are too incomplete to " +
+      "decide, return status 'unclear' and flag nothing.",
     user:
       `FDA LABEL EXCERPTS:\n${labelBlock}\n\n` +
       `CLAIMS:\n${claimsBlock}\n\n` +

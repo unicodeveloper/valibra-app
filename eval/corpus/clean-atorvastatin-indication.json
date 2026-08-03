@@ -1,0 +1,8 @@
+{
+  "id": "clean-atorvastatin-indication",
+  "kind": "clean",
+  "name": "Atorvastatin indication statement",
+  "provenance": "Plain on-label indication and mechanism copy for atorvastatin, phrased as prescribing information rather than promotion. CORRECTED 2026-08-03: the first version used the pre-2023 indication wording (total cholesterol, apo B, triglycerides). The current label's primary-hyperlipidemia indication is LDL-C only, and the pipeline correctly flagged the old wording as off-label — the asset was wrong, not the tool. Kept as a reminder that a clean-set bar is only as good as the labeling it was written from.",
+  "assetText": "LIPITOR (atorvastatin calcium) tablets\n\nLipitor is indicated as an adjunct to diet to reduce low-density lipoprotein cholesterol (LDL-C) in adults with primary hyperlipidemia.\n\nLipitor is an inhibitor of HMG-CoA reductase, the enzyme that catalyzes the conversion of HMG-CoA to mevalonate, an early and rate-limiting step in cholesterol biosynthesis.\n\nThe recommended starting dose is 10 or 20 mg once daily. After initiation or upon titration, lipid levels should be analyzed and the dosage adjusted accordingly.\n\nLipitor is contraindicated in patients with acute liver failure or decompensated cirrhosis, and in patients with hypersensitivity to any component of this medication.",
+  "expect": { "maxCritical": 0, "categories": [] }
+}
