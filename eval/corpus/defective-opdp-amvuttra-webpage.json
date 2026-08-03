@@ -1,0 +1,16 @@
+{
+  "id": "defective-opdp-amvuttra-webpage",
+  "kind": "defective",
+  "name": "Amvuttra ATTR-CM consumer webpage (OPDP untitled letter)",
+  "provenance": "Claims quoted VERBATIM by FDA OPDP in its 04/23/2026 Untitled Letter to Alnylam (NDA 215515, MA 352) re: the ATTR-CM webpage AMV-USA-01405. FDA determined the webpage misbrands Amvuttra. Expected findings are FDA's determination. VERBATIM CHECK 2026-08-04: '3\u00bd' restored to FDA's rendering. FDA presents the headline claims and their accompanying graphic figures as separate quoted items; they are joined into running sentences here to reconstruct the webpage as a reviewer would paste it. Wording is otherwise word-for-word.",
+  "fdaFinding": "Creates a misleading impression of a definitive, quantified mortality benefit. The claims rest on a secondary endpoint of all-cause mortality at 3.5 years drawn from the OPEN-LABEL extension of HELIOS-B: no true placebo comparator remained at that timepoint (all placebo patients were unblinded and switched to Amvuttra), introducing bias and confounding with no concurrent control. The extension was inadequately designed to support conclusory mortality representations, and the on-page disclaimer does not cure it.",
+  "assetText": "AMVUTTRA (vutrisiran) injection\n\nProven to help people with ATTR-CM live longer\n\nPeople lived longer with continued treatment\n\nAnalyses done over 3\u00bd years compared the original AMVUTTRA (vutrisiran) and placebo groups from the beginning of the study. After 3 years, people taking placebo switched to AMVUTTRA so that everyone still in the study received AMVUTTRA for up to an additional 6 months.\n\nThe risk of death was lower over 3\u00bd years with AMVUTTRA. 36% Lower Risk compared to placebo.\n\nSurvival was estimated in a separate analysis at 3\u00bd years. 80% Survival Rate for people taking AMVUTTRA at 3\u00bd years compared to 72% for people taking placebo.\n\nMost deaths were heart-related.\n\nIn a group in the study of people not taking a stabilizer at the start of the study: The risk of death was lower over 3\u00bd years with AMVUTTRA. 35% Lower Risk compared to placebo. Survival was estimated in a separate analysis at 3\u00bd years. 76% Survival Rate for people taking AMVUTTRA at 3\u00bd years compared to 67% for people taking placebo.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [],
+    "flaggedClaims": [
+      "Proven to help people with ATTR-CM live longer",
+      "36% Lower Risk"
+    ]
+  }
+}

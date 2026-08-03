@@ -1,0 +1,18 @@
+{
+  "id": "defective-eliquis-sales-aid",
+  "kind": "defective",
+  "name": "Eliquis AFib sales aid",
+  "provenance": "SAMPLE_ASSETS.eliquis. Engineered defects: 'can be combined with any medication without concern for interactions' contradicting the label's DRUG INTERACTIONS section, #1 market claim, omitted boxed warning.",
+  "assetText": "ELIQUIS (apixaban): Superior stroke protection for patients with atrial fibrillation\n\n- In patients with nonvalvular atrial fibrillation, ELIQUIS reduced the risk of stroke and systemic embolism more than warfarin.\n- ELIQUIS also caused significantly less major bleeding than warfarin.\n- As the #1 prescribed oral anticoagulant, ELIQUIS is the clear choice for AFib.\n- No routine blood monitoring and no dietary restrictions.\n- ELIQUIS can be combined with any medication without concern for interactions.\n- Simple twice-daily oral dosing.\n\nAsk your cardiologist whether ELIQUIS is right for you.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [
+      "drug-interaction",
+      "market-claim"
+    ],
+    "flaggedClaims": [
+      "combined with any medication without concern for interactions",
+      "#1 prescribed oral anticoagulant"
+    ]
+  }
+}

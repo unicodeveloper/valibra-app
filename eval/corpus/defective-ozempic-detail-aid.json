@@ -1,0 +1,17 @@
+{
+  "id": "defective-ozempic-detail-aid",
+  "kind": "defective",
+  "name": "Ozempic HCP detail aid",
+  "provenance": "SAMPLE_ASSETS.ozempic from src/app/sample-asset.ts. Engineered defects: off-label weight-loss creep, omitted boxed warning, unverifiable #1 market claim, comparative vs dulaglutide.",
+  "assetText": "OZEMPIC (semaglutide) injection: Take control of your type 2 diabetes, once weekly\n\n- OZEMPIC lowers A1C by up to 1.8% in adults with type 2 diabetes.\n- In a head-to-head trial, OZEMPIC reduced A1C more than dulaglutide (Trulicity).\n- OZEMPIC reduces the risk of major cardiovascular events, including heart attack, stroke, and cardiovascular death, in adults with type 2 diabetes and established heart disease.\n- Patients lost significant weight on OZEMPIC, the #1 prescribed GLP-1 for weight loss.\n- Once-weekly dosing you take on any day, with or without meals.\n- Generally well tolerated, so you can stay on track.\n\nAsk your healthcare provider if OZEMPIC is right for you.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [
+      "off-label",
+      "market-claim"
+    ],
+    "flaggedClaims": [
+      "#1 prescribed GLP-1 for weight loss"
+    ]
+  }
+}

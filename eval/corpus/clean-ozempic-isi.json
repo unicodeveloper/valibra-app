@@ -1,0 +1,8 @@
+{
+  "id": "clean-ozempic-isi",
+  "kind": "clean",
+  "name": "Ozempic consumer ISI",
+  "provenance": "Consumer Important Safety Information, closely following the FDA-approved patient labeling for semaglutide. This is the exact shape of copy that returned 13 spurious criticals before the severity/retrieval fixes.",
+  "assetText": "OZEMPIC (semaglutide) injection\n\nIMPORTANT SAFETY INFORMATION\n\nWhat is the most important information I should know about Ozempic? Ozempic may cause serious side effects, including possible thyroid tumors, including cancer. Tell your health care provider if you get a lump or swelling in your neck, hoarseness, trouble swallowing, or shortness of breath. These may be symptoms of thyroid cancer.\n\nDo not use Ozempic if you or any of your family have ever had a type of thyroid cancer called medullary thyroid carcinoma (MTC), or if you have an endocrine system condition called Multiple Endocrine Neoplasia syndrome type 2 (MEN 2).\n\nDo not use Ozempic if you have had an allergic reaction to semaglutide or any of the ingredients in Ozempic.\n\nOzempic may cause serious side effects, including inflammation of your pancreas (pancreatitis), changes in vision, low blood sugar (hypoglycemia), kidney problems (kidney failure), serious allergic reactions, and gallbladder problems.\n\nThe most common side effects of Ozempic may include nausea, vomiting, diarrhea, stomach (abdominal) pain, and constipation.\n\nTell your health care provider if you are pregnant or plan to become pregnant. Ozempic may harm your unborn baby.",
+  "expect": { "maxCritical": 0, "categories": [] }
+}
