@@ -94,6 +94,10 @@
   --warn-wash: light-dark(#fbf1e0, #322414);
   --ok: light-dark(#2b7550, #6cc593);
   --ok-wash: light-dark(#e6f2ea, #14301f);
+  /* unverified — deliberately off the red/amber/green axis. Nothing was
+     established either way, so it must not read anywhere on the alarm scale. */
+  --unv: light-dark(#4a6480, #8faec9);
+  --unv-wash: light-dark(#eaeff4, #172430);
   --muted-wash: light-dark(#f0f1ee, #1e2423);
 
   /* elevation — tight, low-spread. Paper doesn't float.
@@ -1570,6 +1574,11 @@ code {
   text-decoration-color: var(--warn);
   background: color-mix(in srgb, var(--warn-wash) 70%, transparent);
 }
+.mk.unverified {
+  text-decoration-color: var(--unv);
+  text-decoration-style: dashed;
+  background: color-mix(in srgb, var(--unv-wash) 70%, transparent);
+}
 .mk.info {
   text-decoration-color: var(--ok);
   background: color-mix(in srgb, var(--ok-wash) 70%, transparent);
@@ -1601,6 +1610,9 @@ code {
 }
 .mk.warning .n {
   background: var(--warn);
+}
+.mk.unverified .n {
+  background: var(--unv);
 }
 .mk.info .n {
   background: var(--ok);
@@ -1724,6 +1736,11 @@ code {
   border-color: var(--warn);
   color: var(--on-sev);
 }
+.chip.unv[aria-pressed="true"] {
+  background: var(--unv);
+  border-color: var(--unv);
+  color: var(--on-sev);
+}
 .chip.ok[aria-pressed="true"] {
   background: var(--ok);
   border-color: var(--ok);
@@ -1734,6 +1751,9 @@ code {
 }
 .chip.warn {
   color: var(--warn);
+}
+.chip.unv {
+  color: var(--unv);
 }
 .chip.ok {
   color: var(--ok);
@@ -1917,6 +1937,10 @@ code {
 .sev.warning {
   background: var(--warn-wash);
   color: var(--warn);
+}
+.sev.unverified {
+  background: var(--unv-wash);
+  color: var(--unv);
 }
 .sev.info {
   background: var(--ok-wash);

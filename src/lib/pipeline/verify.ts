@@ -28,6 +28,14 @@ export function verifyClaim(claim: Claim, evidence: Evidence[]): Promise<Verific
 
   return structured(VerificationSchema, {
     name: "verification",
+    /**
+     * The differentiator, and the fan-out — one call per claim, so this is where
+     * cost lands. Kept at medium rather than high on that basis: entailment over
+     * supplied passages is a narrower judgment than decomposing an asset. At the
+     * default `low` the same claim against the same six sources came back
+     * 'supported', 'partial' and 'no_evidence' on different runs.
+     */
+    effort: "medium",
     system:
       "You verify whether retrieved biomedical evidence substantiates a promotional claim. " +
       "Rules you must not break: (1) Judge ONLY against the evidence provided below — never use " +
@@ -43,7 +51,28 @@ export function verifyClaim(claim: Claim, evidence: Evidence[]): Promise<Verific
       "claims ('more effective than <named drug>') → require evidence that specifically " +
       "substantiates that magnitude or head-to-head comparison. If absent, return 'no_evidence'; " +
       "if the evidence points the other way, 'unsupported' or 'contradicted'.\n" +
-      "- If the evidence is silent on the claim's substance, return 'no_evidence' — do NOT bluff.",
+      "- If the evidence is silent on the claim's substance, return 'no_evidence' — do NOT bluff.\n" +
+      "Reading the excerpts: each source is shown as one or more windows drawn from a longer " +
+      "document, separated by '…'. Text outside those windows was not retrieved. So when an excerpt " +
+      "is clearly the right source for the claim — the same drug, trial, population and endpoint — " +
+      "but some element the claim states (a figure, a statistic, a warning, an instruction, a " +
+      "described risk) does not appear in the window, return 'partial' and say what is missing. " +
+      "Never treat an excerpt boundary as proof the document lacks it.\n" +
+      // The tool graded a sentence of FDA's own approved patient labeling as
+      // contradicted because the retrieved label windows didn't happen to include
+      // the WARNINGS AND PRECAUTIONS section it came from. Silence in a window is
+      // missing text, never a conflict.
+      "ABSENCE IS NOT CONFLICT. 'contradicted' requires the evidence to AFFIRMATIVELY STATE " +
+      "something incompatible with the claim — a different number, an opposite direction of effect, " +
+      "an explicit denial. 'unsupported' requires evidence that addresses the claim's substance and " +
+      "fails to bear it out. If your reasoning would be 'the evidence does not mention / does not " +
+      "advise / does not include this', that is 'partial' or 'no_evidence' — never 'contradicted' " +
+      "or 'unsupported'.\n" +
+      "Special case — the product's own label. When the claim is safety or labeling copy and the " +
+      "evidence includes that product's FDA label, the label is the source of truth. Promotional " +
+      "safety copy is transcribed from it, so a mismatch is far more likely to be a section we did " +
+      "not retrieve than a false statement. Return 'contradicted' only where the label affirmatively " +
+      "says otherwise.",
     user:
       `CLAIM (${claim.type}): "${claim.text}"\n\n` +
       `RETRIEVED EVIDENCE:\n${evidenceBlock}\n\n` +

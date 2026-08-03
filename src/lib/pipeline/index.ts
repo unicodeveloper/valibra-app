@@ -11,6 +11,7 @@ import type {
 import { extractClaims } from "./extract";
 import { verifyClaim } from "./verify";
 import { checkFairBalance } from "./fairbalance";
+import { profileAsset, fairBalanceApplies, safetyOmissionApplies, profileSummary } from "./assetProfile";
 import { checkOffLabel } from "./offlabel";
 import { checkCitationQuality } from "./citationQuality";
 import { checkAdverseEvents } from "./adverseEvents";
@@ -161,13 +162,23 @@ export async function runReview(
   // ---- WAVE 1: fetch all drug-scoped data up front, in parallel ----
   // Label (F5/F6/F8 + on-label substantiation), FAERS (F7), interactions (F19)
   // all depend only on drugName, so fire them together.
-  const [labelRes, faersRes, interactionRes, libraryEntries] = await Promise.all([
+  const [labelRes, faersRes, interactionRes, libraryEntries, profileRes] = await Promise.all([
     drugName ? valyu.getLabel(drugName) : Promise.resolve({ evidence: [], error: null }),
     drugName ? valyu.getAdverseEvents(drugName) : Promise.resolve({ evidence: [], error: null }),
     drugName ? valyu.getInteractions(drugName) : Promise.resolve({ evidence: [], error: null }),
     drugName ? listLibrary(drugName, owner).catch(() => []) : Promise.resolve([]), // F16 reuse
+    // What kind of asset this is — gates F5/F8 below. Independent of the drug, so
+    // it rides along here rather than adding a step. A classification failure is
+    // non-fatal: the gates fall back to running the checks.
+    profileAsset(assetText).catch((e) => {
+      console.error("asset profiling failed (checks ungated):", e);
+      return null;
+    }),
   ]);
   for (const e of [faersRes.error, interactionRes.error]) if (e) retrievalErrors.add(e);
+
+  const assetProfile = profileRes;
+  if (assetProfile) log("profile", profileSummary(assetProfile));
 
   // F16 reuse — match claims against the library (exact text, then semantic).
   // Kicked off here so its embedding call overlaps wave 2's LLM work.
@@ -193,8 +204,15 @@ export async function runReview(
   }
 
   // ---- WAVE 2: every per-claim and analysis check runs concurrently ----
-  // Claim types whose on-label version is substantiated by the label indication.
-  const onLabelTypes = new Set(["efficacy", "indication", "dosing"]);
+  // Claim types the retrieved label can substantiate directly.
+  //
+  // "safety" belongs here and was missing. Safety copy in a promotional asset —
+  // an ISI above all — is transcribed from the SPL, so the label IS its source
+  // of truth. Leaving it out meant those claims were judged only against
+  // whatever a generic DailyMed/FAERS query happened to rerank, and an ISI line
+  // lifted verbatim from ADVERSE REACTIONS could come back unsubstantiated
+  // while the very section that substantiates it sat unused in `label`.
+  const onLabelTypes = new Set(["efficacy", "indication", "dosing", "safety"]);
   const substantiation: ReviewResult["substantiation"] = {};
 
   // Surveillance/trend claims can't be substantiated on the Search lane — their
@@ -219,6 +237,7 @@ export async function runReview(
       const { evidence, error } = await valyu.substantiate(
         claim.searchQuery || claim.text,
         claim.type,
+        claim.text,
       );
       if (error) {
         retrievalErrors.add(error);
@@ -249,13 +268,23 @@ export async function runReview(
   const novClaims = noveltyClaims(claims);
   const mktClaims = marketClaims(claims);
 
+  // F5/F8 are promotional-materials rules. Gate them on what the asset actually
+  // is — and skip the call entirely rather than running it and discarding the
+  // answer, so a labeling excerpt doesn't pay for a judgment that cannot apply.
+  const runFairBalance = fairBalanceApplies(assetProfile);
+  const runSafetyOmission = safetyOmissionApplies(assetProfile);
+  if (!runFairBalance)
+    log("fair-balance", `Skipped — not a promotional piece with benefit claims (kind=${assetProfile?.kind}).`);
+  if (!runSafetyOmission)
+    log("safety-omission", `Skipped — not a piece required to carry the boxed warning (kind=${assetProfile?.kind}).`);
+
   const [, fairBalance, offLabel, adverseEvents, safetyOmission, interactions, comparativeR, ipR, marketR] =
     await Promise.all([
       claimTasks, // F2 + F3
-      checkFairBalance(assetText, label), // F5
+      runFairBalance ? checkFairBalance(assetText, label) : Promise.resolve(null), // F5
       checkOffLabel(claims, label), // F6
       checkAdverseEvents(safetyClaims, faersRes.evidence), // F7
-      checkSafetyOmission(assetText, label), // F8
+      runSafetyOmission ? checkSafetyOmission(assetText, label) : Promise.resolve(null), // F8
       checkInteractions(claims, interactionRes.evidence), // F19
       checkComparative(comparativeClaims, drugName), // F10 (self-skips if none)
       checkIp(novClaims, drugName), // F11 (self-skips if none)
@@ -267,10 +296,11 @@ export async function runReview(
   for (const e of [comparativeR.error, ipR.error, marketR.error]) if (e) retrievalErrors.add(e);
 
   log("verify", `${Object.keys(substantiation).length} claim(s) verified.`);
-  log("fair-balance", fairBalance.balanced ? "Balanced." : "Fair-balance issue flagged.");
+  if (fairBalance) log("fair-balance", fairBalance.balanced ? "Balanced." : "Fair-balance issue flagged.");
   log("off-label", `Status: ${offLabel.status}; ${offLabel.offLabelClaims.length} flagged claim(s).`);
   log("adverse-events", `${adverseEvents.contradictions.length} FAERS contradiction(s).`);
-  log("safety-omission", `${safetyOmission.omittedBoxedWarnings.length} boxed + ${safetyOmission.omittedContraindications.length} contraindication omission(s).`);
+  if (safetyOmission)
+    log("safety-omission", `${safetyOmission.omittedBoxedWarnings.length} boxed + ${safetyOmission.omittedContraindications.length} contraindication omission(s).`);
   log("interactions", `${interactions.findings.length} interaction finding(s).`);
   log("comparative", `${comparative.findings.length} comparative claim(s) assessed.`);
   log("ip", `${ip.findings.length} novelty/IP claim(s) assessed.`);
@@ -286,7 +316,7 @@ export async function runReview(
   const concerns: string[] = [];
   if (offLabel.status === "off_label" && offLabel.offLabelClaims.length)
     concerns.push("off-label promotion (claims beyond the approved indication)");
-  if (!fairBalance.balanced && fairBalance.hasSafetyContext)
+  if (fairBalance && !fairBalance.balanced && fairBalance.hasSafetyContext)
     concerns.push("inadequate fair balance / omission of required safety information");
   if (Object.values(substantiation).some((s) => s.verification.verdict === "unsupported"))
     concerns.push("unsupported efficacy claim");
@@ -352,6 +382,7 @@ export async function runReview(
     drugName,
     claims,
     substantiation,
+    assetProfile,
     fairBalance,
     offLabel,
     adverseEvents,
@@ -399,15 +430,27 @@ const VERDICT_HEADLINE: Record<Verification["verdict"], string> = {
   partial: "Claim only partly supported",
   unsupported: "Claim not supported by the evidence",
   contradicted: "Claim contradicted by the evidence",
-  no_evidence: "No evidence addresses this claim",
+  no_evidence: "Not substantiated by any retrieved source",
 };
 
+/**
+ * Grade a verdict.
+ *
+ * `no_evidence` is deliberately NOT critical. It says the retrieved sources
+ * don't speak to the claim — which is a statement about our retrieval, not a
+ * defect in the copy. Grading it critical meant any asset whose references live
+ * outside our datasets (approved patient labeling, an ISI transcribed from the
+ * SPL, a claim cited to the sponsor's own data on file) came back as a wall of
+ * red. It gets its own tier so the reviewer can act on it — attach the
+ * reference — without it competing with real defects.
+ */
 function verdictSeverity(v: Verification["verdict"]): Severity {
   switch (v) {
     case "contradicted":
     case "unsupported":
-    case "no_evidence":
       return "critical";
+    case "no_evidence":
+      return "unverified";
     case "partial":
       return "warning";
     case "supported":
@@ -443,12 +486,13 @@ function assembleFindings(
     const s = substantiation[claim.id];
     if (!s) continue;
     const { verification, evidence, error } = s;
-    // A failed search is "not checked" (warning), not "unsubstantiated" (critical).
+    // A failed search is "not checked", not "unsubstantiated" — it belongs in
+    // the unverified tier alongside abstentions, never among the defects.
     const isSearchError = Boolean(error);
     findings.push({
       id: `sub-${claim.id}`,
       category: claimCategory(claim.type),
-      severity: isSearchError ? "warning" : verdictSeverity(verification.verdict),
+      severity: isSearchError ? "unverified" : verdictSeverity(verification.verdict),
       claimId: claim.id,
       claimText: claim.text,
       headline: isSearchError
@@ -633,7 +677,8 @@ function assembleFindings(
     }
   }
 
-  // Most severe first.
-  const rank: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
+  // Most severe first. Unverified sorts below the defects and above the
+  // supported claims — it's work for the reviewer, not a finding against the copy.
+  const rank: Record<Severity, number> = { critical: 0, warning: 1, unverified: 2, info: 3 };
   return findings.sort((a, b) => rank[a.severity] - rank[b.severity]);
 }

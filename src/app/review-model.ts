@@ -17,18 +17,26 @@ export interface DecisionNote {
   suggestedRevision?: string;
 }
 
-/** Severity, ordered by how much it should interrupt a reviewer. */
-const SEV_RANK: Record<Severity, number> = { critical: 0, warning: 1, info: 2 };
+/**
+ * Severity, ordered by how much it should interrupt a reviewer.
+ *
+ * `unverified` sits below `warning`: an abstention still needs the reviewer to
+ * do something (attach the reference), but it is not a finding against the copy
+ * and must never outrank one that is.
+ */
+const SEV_RANK: Record<Severity, number> = { critical: 0, warning: 1, unverified: 2, info: 3 };
 
 export const SEV_GLYPH: Record<Severity, string> = {
   critical: "▲", // triangle — shape, not just hue, carries severity
   warning: "●",
+  unverified: "○", // hollow — nothing established either way
   info: "✓",
 };
 
 export const SEV_WORD: Record<Severity, string> = {
   critical: "Critical",
   warning: "To review",
+  unverified: "Unverified",
   info: "Supported",
 };
 
@@ -150,6 +158,7 @@ export function groupByClaim(findings: Finding[]): Map<string, Finding[]> {
 export interface Counts {
   critical: number;
   warning: number;
+  unverified: number;
   info: number;
 }
 
@@ -157,6 +166,7 @@ export function countBySeverity(findings: Finding[]): Counts {
   return {
     critical: findings.filter((f) => f.severity === "critical").length,
     warning: findings.filter((f) => f.severity === "warning").length,
+    unverified: findings.filter((f) => f.severity === "unverified").length,
     info: findings.filter((f) => f.severity === "info").length,
   };
 }
