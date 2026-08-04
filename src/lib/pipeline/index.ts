@@ -8,7 +8,7 @@ import type {
   Severity,
   Verification,
 } from "../schemas";
-import { extractClaims } from "./extract";
+import { extractAcrossSegments, mapLimit } from "./segment";
 import { verifyClaim } from "./verify";
 import { checkFairBalance } from "./fairbalance";
 import { profileAsset, fairBalanceApplies, safetyOmissionApplies, profileSummary } from "./assetProfile";
@@ -164,9 +164,17 @@ export async function runReview(
   // short-circuit this one.
   valyu.beginRetrievalRun();
 
-  // F1 — extract claims + drug
-  const { drugName, claims } = await extractClaims(assetText);
-  log("extract", `Found ${claims.length} claim(s); drug = ${drugName || "(none)"}.`);
+  // F1 — extract claims + drug. Long assets are segmented first: one extraction
+  // pass over twenty pages is slower and degrades in the middle of the document.
+  // Asset-level checks below still see the whole text.
+  const { drugName, claims, segments } = await extractAcrossSegments(assetText, (d, t, n) =>
+    log("extract", `Segment ${d}/${t}: ${n} claim(s).`),
+  );
+  log(
+    "extract",
+    `Found ${claims.length} claim(s); drug = ${drugName || "(none)"}` +
+      (segments > 1 ? ` (across ${segments} segments).` : "."),
+  );
 
   const retrievalErrors = new Set<string>();
 
@@ -243,8 +251,13 @@ export async function runReview(
     return true;
   });
 
-  const claimTasks = Promise.all(
-    inlineClaims.map(async (claim) => {
+  // Bounded rather than Promise.all. Each claim is a retrieval call plus an
+  // entailment call, so a hundred-claim document was two hundred simultaneous
+  // requests across two APIs — which surfaces as connection errors, not as
+  // anything a reviewer could act on. Eight at a time keeps a normal review just
+  // as fast while making a long one finish at all.
+  const CLAIM_CONCURRENCY = 8;
+  const claimTasks = mapLimit(inlineClaims, CLAIM_CONCURRENCY, async (claim) => {
       // The reviewer's own references first: the asset was written from them, so
       // they are the substantiation an MLR reviewer would actually check against.
       // Retrieval then adds the independent view.
@@ -292,8 +305,7 @@ export async function runReview(
         error: null,
         noSourcesRetrieved,
       };
-    }),
-  );
+  });
 
   const safetyClaims = claims.filter((c) => c.type === "safety" || c.type === "comparative");
   const comparativeClaims = claims.filter((c) => c.type === "comparative");
