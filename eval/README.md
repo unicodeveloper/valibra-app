@@ -102,6 +102,31 @@ Results are written to `results/<timestamp>.json` and `results/latest.json`.
 | `zeroSourceClaims` | Claims where retrieval returned nothing **and reported no error**, a silent failure the reviewer cannot see. |
 | `hardFailures` | Runs that never returned a result (e.g. the model's content filter rejecting oncology safety copy). |
 
+## Reading the numbers
+
+Every metric here moves run to run. Across eight full-corpus runs on 2026-08-04,
+with real code changes between some of them but not others:
+
+```
+hard failures:        0, 2, 2, 1, 3, 0, 3, 0
+verdict agreement:   70, 84, 73, 78, 71, 79, 71, 81
+clean criticals:   0.25, 0, .08, .08, .16, 0, 0, .12
+```
+
+That is the noise floor. A single point inside those ranges is not a result, and
+two runs are not a comparison unless they share `--runs`, the same corpus, and
+differ only in the change under test. Adding a corpus asset changes the
+denominator; a hard failure removes an asset's claims from the measurement
+entirely, which can make recall *rise* while nothing improved.
+
+The commit "Batch long documents instead of hoping they fit" reported hard
+failures 3/33 to 0/24 and verdict agreement 71% to 81% as if they were effects of
+that change. They were not: the baseline was n=3 over 11 assets, the follow-up
+n=2 over 12, with another PR merged in between, and both figures sit inside the
+ranges above. The defensible claim was only that the corpus showed no regression.
+
+When a change cannot be isolated, say what held rather than what moved.
+
 ## Status of the clean set
 
 The clean assets here are derived from public prescribing information and are a
