@@ -28,7 +28,10 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 *.html
-*.md
+
+# NOTE: a blanket `*.md` used to live here. It silently kept eval/README.md out of
+# the repo while readme.md survived only because it predates the rule, leaving a
+# broken link from the main README. Ignore scratch markdown by path, not by suffix.
 
 # eval: keep the current scoreboard, not every timestamped run
 eval/results/*.json
