@@ -5,14 +5,15 @@
  * extracts the text, and writes src/lib/precedent/opdp-letters.json.
  *
  * Why a script and not a one-off paste: OPDP's output rate changed completely.
- * Five letters in all of 2024, then roughly a hundred in one week of September
- * 2025, and 2026 on track to exceed fifty. A snapshot pasted in by hand goes
- * stale within weeks and nobody notices. Run this to refresh it.
+ * Five enforcement letters in each of 2023 and 2024, then close to a hundred in
+ * a single week of September 2025, and 21 untitled letters across Jan-Jul 2026.
+ * A snapshot pasted in by hand goes stale within weeks and nobody notices. Run
+ * this to refresh it.
  *
  * Why only the current year by default: FDA's positions have been shifting. A
- * 2026 letter contradicts a warning letter from twenty years earlier that had
- * treated factual statements about approved indications as non-misleading.
- * Seeding old letters as precedent risks teaching a position FDA has since
+ * 2026 letter objected to a factual comparison of approved indications, the same
+ * kind of claim FDA expressly permitted in a 2005 Zyrtec warning letter. Seeding
+ * old letters as precedent risks teaching a position the agency has since
  * abandoned, which is worse than seeding nothing.
  *
  * FDA letters are US Government works and therefore public domain (17 USC 105),

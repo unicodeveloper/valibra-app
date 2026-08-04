@@ -18,12 +18,17 @@ import corpus from "./opdp-letters.json";
  * (regulatory grounding) only, where the question is "has FDA objected to
  * something like this", which is what a letter can actually answer.
  *
- * Scoped to the current year on purpose. OPDP issued five letters in all of
- * 2024, roughly a hundred in one week of September 2025, and is on pace to pass
- * fifty in 2026 — and its positions have moved: a 2026 letter contradicts a
- * warning letter from twenty years earlier that had treated factual statements
- * about approved indications as non-misleading. Seeding older letters as
- * precedent risks teaching a position FDA has abandoned.
+ * Scoped to the current year on purpose. OPDP issued five enforcement letters in
+ * each of 2023 and 2024, then close to a hundred in a single week of September
+ * 2025; FDA's own index carried 21 untitled letters for Jan-Jul 2026 when this
+ * was written, roughly three a month.
+ *
+ * The rate is not the main reason though. FDA's positions have moved. A 2026
+ * letter objected to a factual comparison of approved indications, the same kind
+ * of claim FDA expressly permitted in a 2005 Zyrtec warning letter ("No other
+ * antihistamine is approved to treat more allergies than Zyrtec"). Seeding older
+ * letters as precedent risks teaching a position the agency has since abandoned,
+ * which is worse than seeding none.
  *
  * FDA letters are US Government works, public domain under 17 USC 105.
  */
