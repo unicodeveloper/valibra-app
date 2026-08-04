@@ -351,7 +351,24 @@ export interface ReviewResult {
   claims: Claim[];
   substantiation: Record<
     string,
-    { evidence: Evidence[]; verification: Verification; error: string | null }
+    {
+      evidence: Evidence[];
+      verification: Verification;
+      error: string | null;
+      /**
+       * True when the substantiation search ran successfully and returned NOTHING
+       * — no error, no results. Distinct from a search that returned sources
+       * which turned out not to address the claim: the first is a gap in what we
+       * can reach, the second is a gap in the evidence base. Both used to render
+       * identically as "not substantiated", so a reviewer could not tell that the
+       * tool had effectively not looked.
+       *
+       * Note this tracks the SEARCH, not `evidence` — label excerpts are appended
+       * afterwards for on-label claim types, so `evidence` can be non-empty while
+       * the search itself found nothing.
+       */
+      noSourcesRetrieved?: boolean;
+    }
   >;
   /** What kind of asset this is — gates the promotional-materials checks (F5/F8). */
   assetProfile: AssetProfile | null;

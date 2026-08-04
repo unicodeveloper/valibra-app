@@ -1,19 +1,19 @@
 {
   "summary": {
-    "timestamp": "2026-08-03T23:42:26.487Z",
+    "timestamp": "2026-08-04T00:20:05.761Z",
     "base": "http://localhost:3001",
     "runsPerAsset": 3,
     "assets": 11,
-    "falsePositiveRate": 0.08333333333333333,
+    "falsePositiveRate": 0.16666666666666666,
     "worstCleanCriticals": 1,
     "recall": 1,
-    "defectRecall": 0.9230769230769231,
-    "meanClaimSpread": 0.7272727272727273,
-    "verdictAgreement": 0.7333333333333334,
-    "zeroSourceClaimsPerRun": 0.4848484848484848,
-    "hardFailures": 2,
-    "hardFailureRate": 0.06060606060606061,
-    "passed": 9,
+    "defectRecall": 0.9090909090909091,
+    "meanClaimSpread": 1.2,
+    "verdictAgreement": 0.7100000000000001,
+    "zeroSourceClaimsPerRun": 0.2,
+    "hardFailures": 3,
+    "hardFailureRate": 0.09090909090909091,
+    "passed": 7,
     "total": 11
   },
   "results": [
@@ -35,10 +35,10 @@
         0,
         0
       ],
-      "warningsMean": 0,
-      "unverifiedMean": 1,
+      "warningsMean": 1,
+      "unverifiedMean": 0.6666666666666666,
       "zeroSourceMean": 0,
-      "verdictAgreement": 1,
+      "verdictAgreement": 0.6,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
@@ -83,9 +83,9 @@
       "failures": [],
       "ok": false,
       "maxCritical": 0,
-      "claimsMin": 5,
+      "claimsMin": 3,
       "claimsMax": 8,
-      "claimSpread": 3,
+      "claimSpread": 5,
       "criticalsMean": 0.3333333333333333,
       "criticalsMax": 1,
       "criticalsPerRun": [
@@ -93,7 +93,7 @@
         1,
         0
       ],
-      "warningsMean": 3.3333333333333335,
+      "warningsMean": 3,
       "unverifiedMean": 0,
       "zeroSourceMean": 0,
       "verdictAgreement": 1,
@@ -110,19 +110,19 @@
       "name": "Ozempic consumer ISI",
       "runs": 3,
       "failures": [],
-      "ok": true,
+      "ok": false,
       "maxCritical": 0,
       "claimsMin": 7,
       "claimsMax": 9,
       "claimSpread": 2,
-      "criticalsMean": 0,
-      "criticalsMax": 0,
+      "criticalsMean": 0.3333333333333333,
+      "criticalsMax": 1,
       "criticalsPerRun": [
         0,
         0,
-        0
+        1
       ],
-      "warningsMean": 1.3333333333333333,
+      "warningsMean": 1,
       "unverifiedMean": 0,
       "zeroSourceMean": 0,
       "verdictAgreement": 1,
@@ -142,19 +142,19 @@
       "ok": true,
       "maxCritical": null,
       "claimsMin": 6,
-      "claimsMax": 7,
-      "claimSpread": 1,
-      "criticalsMean": 6.666666666666667,
-      "criticalsMax": 8,
+      "claimsMax": 6,
+      "claimSpread": 0,
+      "criticalsMean": 6,
+      "criticalsMax": 7,
       "criticalsPerRun": [
         6,
-        8,
-        6
+        5,
+        7
       ],
       "warningsMean": 6,
       "unverifiedMean": 0.6666666666666666,
       "zeroSourceMean": 0,
-      "verdictAgreement": 0.5,
+      "verdictAgreement": 0.3333333333333333,
       "expectedCategories": [
         "drug-interaction",
         "market-claim"
@@ -183,19 +183,19 @@
       "ok": true,
       "maxCritical": null,
       "claimsMin": 6,
-      "claimsMax": 6,
-      "claimSpread": 0,
-      "criticalsMean": 4,
-      "criticalsMax": 5,
+      "claimsMax": 7,
+      "claimSpread": 1,
+      "criticalsMean": 5.666666666666667,
+      "criticalsMax": 7,
       "criticalsPerRun": [
-        3,
+        6,
         4,
-        5
+        7
       ],
       "warningsMean": 5.666666666666667,
-      "unverifiedMean": 1.3333333333333333,
+      "unverifiedMean": 2,
       "zeroSourceMean": 0,
-      "verdictAgreement": 0.5,
+      "verdictAgreement": 0.6666666666666666,
       "expectedCategories": [
         "safety-omission",
         "market-claim"
@@ -219,42 +219,13 @@
       "id": "defective-keytruda-detail-aid",
       "kind": "defective",
       "name": "Keytruda NSCLC detail aid",
-      "runs": 1,
+      "runs": 0,
       "failures": [
+        "HTTP 500 — Review failed. Check the server logs for details.",
         "HTTP 500 — Review failed. Check the server logs for details.",
         "HTTP 500 — Review failed. Check the server logs for details."
       ],
-      "ok": false,
-      "maxCritical": null,
-      "claimsMin": 6,
-      "claimsMax": 6,
-      "claimSpread": 0,
-      "criticalsMean": 3,
-      "criticalsMax": 3,
-      "criticalsPerRun": [
-        3
-      ],
-      "warningsMean": 5,
-      "unverifiedMean": 1,
-      "zeroSourceMean": 0,
-      "verdictAgreement": null,
-      "expectedCategories": [
-        "ip"
-      ],
-      "matchedCategories": [
-        "ip"
-      ],
-      "missedCategories": [],
-      "expectedClaims": [
-        "no comparable alternative",
-        "all comers regardless of biomarker status"
-      ],
-      "flaggedClaims": [
-        "no comparable alternative"
-      ],
-      "missedClaims": [
-        "all comers regardless of biomarker status"
-      ]
+      "ok": false
     },
     {
       "id": "defective-opdp-amvuttra-webpage",
@@ -262,22 +233,22 @@
       "name": "Amvuttra ATTR-CM consumer webpage (OPDP untitled letter)",
       "runs": 3,
       "failures": [],
-      "ok": true,
+      "ok": false,
       "maxCritical": null,
       "claimsMin": 9,
-      "claimsMax": 9,
-      "claimSpread": 0,
-      "criticalsMean": 7.333333333333333,
-      "criticalsMax": 8,
+      "claimsMax": 11,
+      "claimSpread": 2,
+      "criticalsMean": 6.666666666666667,
+      "criticalsMax": 10,
       "criticalsPerRun": [
-        7,
         8,
-        7
+        10,
+        2
       ],
-      "warningsMean": 4,
-      "unverifiedMean": 4,
-      "zeroSourceMean": 4,
-      "verdictAgreement": 0.6666666666666666,
+      "warningsMean": 7,
+      "unverifiedMean": 1,
+      "zeroSourceMean": 1.6666666666666667,
+      "verdictAgreement": 0.5,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
@@ -286,10 +257,11 @@
         "36% Lower Risk"
       ],
       "flaggedClaims": [
-        "Proven to help people with ATTR-CM live longer",
         "36% Lower Risk"
       ],
-      "missedClaims": []
+      "missedClaims": [
+        "Proven to help people with ATTR-CM live longer"
+      ]
     },
     {
       "id": "defective-opdp-breztri-salesaid",
@@ -300,8 +272,8 @@
       "ok": true,
       "maxCritical": null,
       "claimsMin": 5,
-      "claimsMax": 6,
-      "claimSpread": 1,
+      "claimsMax": 5,
+      "claimSpread": 0,
       "criticalsMean": 2,
       "criticalsMax": 2,
       "criticalsPerRun": [
@@ -309,10 +281,10 @@
         2,
         2
       ],
-      "warningsMean": 7,
-      "unverifiedMean": 2.3333333333333335,
-      "zeroSourceMean": 0.3333333333333333,
-      "verdictAgreement": 0.4,
+      "warningsMean": 7.333333333333333,
+      "unverifiedMean": 1.6666666666666667,
+      "zeroSourceMean": 0,
+      "verdictAgreement": 0.6,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
@@ -341,13 +313,13 @@
       "criticalsMax": 2,
       "criticalsPerRun": [
         1,
-        2,
-        1
+        1,
+        2
       ],
-      "warningsMean": 7,
-      "unverifiedMean": 1.3333333333333333,
-      "zeroSourceMean": 1,
-      "verdictAgreement": 0.6,
+      "warningsMean": 5.333333333333333,
+      "unverifiedMean": 0.3333333333333333,
+      "zeroSourceMean": 0.3333333333333333,
+      "verdictAgreement": 0.4,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
@@ -370,19 +342,19 @@
       "ok": true,
       "maxCritical": null,
       "claimsMin": 6,
-      "claimsMax": 6,
-      "claimSpread": 0,
-      "criticalsMean": 4.333333333333333,
+      "claimsMax": 7,
+      "claimSpread": 1,
+      "criticalsMean": 4.666666666666667,
       "criticalsMax": 5,
       "criticalsPerRun": [
         4,
         5,
-        4
+        5
       ],
-      "warningsMean": 4,
-      "unverifiedMean": 0.6666666666666666,
+      "warningsMean": 4.333333333333333,
+      "unverifiedMean": 0.3333333333333333,
       "zeroSourceMean": 0,
-      "verdictAgreement": 0.6666666666666666,
+      "verdictAgreement": 1,
       "expectedCategories": [
         "off-label",
         "market-claim"

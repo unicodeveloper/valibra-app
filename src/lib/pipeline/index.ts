@@ -256,10 +256,18 @@ export async function runReview(
         };
         return;
       }
+      // Captured BEFORE label excerpts are appended: this records what the
+      // search itself found, which is what the reviewer needs to know.
+      const noSourcesRetrieved = evidence.length === 0;
       const evidenceForVerify =
         onLabelTypes.has(claim.type) && label.length ? [...evidence, ...label] : evidence;
       const verification = await verifyClaim(claim, evidenceForVerify);
-      substantiation[claim.id] = { evidence: evidenceForVerify, verification, error: null };
+      substantiation[claim.id] = {
+        evidence: evidenceForVerify,
+        verification,
+        error: null,
+        noSourcesRetrieved,
+      };
     }),
   );
 
@@ -489,16 +497,28 @@ function assembleFindings(
     // A failed search is "not checked", not "unsubstantiated" — it belongs in
     // the unverified tier alongside abstentions, never among the defects.
     const isSearchError = Boolean(error);
+    // Search ran, returned nothing, and nothing else spoke to the claim either.
+    // Say so plainly: "we found no source" is a different message to the
+    // reviewer than "the sources we found don't support this", and only the
+    // first one means the tool effectively did not look.
+    const foundNothing =
+      !isSearchError && s.noSourcesRetrieved === true && verification.verdict === "no_evidence";
     findings.push({
       id: `sub-${claim.id}`,
       category: claimCategory(claim.type),
-      severity: isSearchError ? "unverified" : verdictSeverity(verification.verdict),
+      severity: isSearchError || foundNothing ? "unverified" : verdictSeverity(verification.verdict),
       claimId: claim.id,
       claimText: claim.text,
       headline: isSearchError
         ? "Not checked — evidence retrieval failed"
-        : VERDICT_HEADLINE[verification.verdict],
-      detail: verification.rationale,
+        : foundNothing
+          ? "No source found — this claim was not checked against evidence"
+          : VERDICT_HEADLINE[verification.verdict],
+      detail: foundNothing
+        ? "The literature search returned no results for this claim, so nothing was " +
+          "assessed. This is a gap in what the search could reach, not a finding " +
+          "against the claim — attach your own reference to substantiate it."
+        : verification.rationale,
       confidence: isSearchError ? null : verification.confidence,
       evidence,
       libraryMatch: p1.libraryMatches.get(claim.id) ?? null,
