@@ -174,6 +174,13 @@ library.
 
 ## Quick start
 
+You need two keys before the first run:
+
+| Key | Where to get it | What it pays for |
+| --- | --- | --- |
+| `VALYU_API_KEY` | [platform.valyu.ai](https://platform.valyu.ai/) | every retrieval — labels, literature, FAERS, patents |
+| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) | claim extraction and entailment |
+
 ```bash
 npm install
 cp .env.example .env.local   # add VALYU_API_KEY and OPENAI_API_KEY
@@ -210,7 +217,8 @@ behaviourally identical.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openmlr?referralCode=yuv1Gy&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-One click, then set two variables — `VALYU_API_KEY` and `OPENAI_API_KEY`. Those are
+One click, then set two variables — `VALYU_API_KEY` ([get one](https://platform.valyu.ai/)) and `OPENAI_API_KEY`
+([get one](https://platform.openai.com/api-keys)). Those are
 always yours to supply: the template can provision the infrastructure, but not the
 credentials that pay for retrieval and inference. If it doesn't include a database, add
 one as in step 2 below; persistence is optional either way.
@@ -235,8 +243,8 @@ this is mostly clicking through — no Dockerfile, no build settings to fill in.
 
    | Variable | Value |
    | --- | --- |
-   | `VALYU_API_KEY` | your Valyu key — this deployment pays for every search |
-   | `OPENAI_API_KEY` | your OpenAI key |
+   | `VALYU_API_KEY` | your Valyu key from [platform.valyu.ai](https://platform.valyu.ai/) — this deployment pays for every search |
+   | `OPENAI_API_KEY` | your OpenAI key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
    | `NEXT_PUBLIC_APP_MODE` | `self-hosted` (or omit — anything that isn't `valyu` fails safe to it) |
 
    Leave the OAuth block unset. It only applies to `valyu` mode, where reviewers sign in
