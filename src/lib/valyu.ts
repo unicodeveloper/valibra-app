@@ -308,6 +308,17 @@ export function substantiate(
 ): Promise<Retrieval> {
   const focus = [claimText, searchQuery].filter(Boolean).join(" ");
   return search(searchQuery, sourcesForClaim(type), 6, 2600, focus || undefined);
+  // NOTE: a broadening retry was tried here — on zero results, re-search with the
+  // query's first four terms. It worked as retrieval (silent zero-source claims
+  // 0.48/run → 0.03) and was a net loss as review: truncating drops exactly the
+  // substantive terms ("all-cause", "mortality", "survival"), so the retry
+  // returns generic papers about the drug, and the verifier reads those as
+  // supporting a mortality claim they do not substantiate. Claims FDA had cited
+  // as violative stopped being flagged — 92% → 77% on the eval corpus, with
+  // Amvuttra's "Proven to help people with ATTR-CM live longer" going missed.
+  // Reporting "no source found" honestly beats answering from adjacent evidence.
+  // Any future retry must preserve the claim's substantive terms and be measured
+  // on `defective claims flagged`, not on the zero-source count alone.
 }
 
 /**

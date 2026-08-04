@@ -103,7 +103,11 @@ const countSev = (r, sev) => r.findings.filter((f) => f.severity === sev).length
  * unverified.
  */
 function zeroSourceClaims(r) {
-  return Object.values(r.substantiation).filter((s) => s.evidence.length === 0 && !s.error).length;
+  return Object.values(r.substantiation).filter((s) =>
+    // Prefer the pipeline's own flag: it records what the SEARCH returned, before
+    // label excerpts are appended, so it catches cases `evidence.length` misses.
+    s.noSourcesRetrieved !== undefined ? s.noSourcesRetrieved && !s.error : s.evidence.length === 0 && !s.error,
+  ).length;
 }
 
 /** Fraction of claim texts whose verdict was identical in every run that saw them. */
