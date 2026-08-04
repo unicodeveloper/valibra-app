@@ -17,7 +17,7 @@ work.
 - [Calibration](#calibration-measuring-false-positives-not-just-catches), how false positives are measured
 - [Where this fits](#where-this-fits)
 - [Stack](#stack)
-- [Quick start](#quick-start) · [Modes: who pays for Valyu](#modes-who-pays-for-valyu) · [Deploy your own (Railway)](#deploy-your-own-railway) · [Local Postgres](#optional-persist-the-audit-trail-and-claims-library-local)
+- [Quick start](#quick-start) · [Modes: who pays for Valyu](#modes-who-pays-for-valyu) · [Self-Host on Your Infrastructure (Railway)](#self-host-on-your-infrastructure-railway) · [Local Postgres](#optional-persist-the-audit-trail-and-claims-library-local)
 - [Layout](#layout) · [Author](#author) · [License](#license)
 
 ## Trust invariants
@@ -223,7 +223,7 @@ the key-based path rather than locking everyone out. The billing decision lives 
 which every Valyu call routes through, so the two lanes stay
 behaviourally identical.
 
-### Deploy your own (Railway)
+### Self-Host on Your Infrastructure (Railway)
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openmlr?referralCode=yuv1Gy&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
