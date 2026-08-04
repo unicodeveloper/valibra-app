@@ -1,19 +1,19 @@
 {
   "summary": {
-    "timestamp": "2026-08-04T00:20:05.761Z",
+    "timestamp": "2026-08-04T09:27:43.015Z",
     "base": "http://localhost:3001",
     "runsPerAsset": 3,
     "assets": 11,
-    "falsePositiveRate": 0.16666666666666666,
-    "worstCleanCriticals": 1,
+    "falsePositiveRate": 0,
+    "worstCleanCriticals": 0,
     "recall": 1,
-    "defectRecall": 0.9090909090909091,
-    "meanClaimSpread": 1.2,
-    "verdictAgreement": 0.7100000000000001,
-    "zeroSourceClaimsPerRun": 0.2,
+    "defectRecall": 1,
+    "meanClaimSpread": 0.6,
+    "verdictAgreement": 0.7146031746031746,
+    "zeroSourceClaimsPerRun": 0.13333333333333333,
     "hardFailures": 3,
     "hardFailureRate": 0.09090909090909091,
-    "passed": 7,
+    "passed": 10,
     "total": 11
   },
   "results": [
@@ -35,16 +35,18 @@
         0,
         0
       ],
-      "warningsMean": 1,
-      "unverifiedMean": 0.6666666666666666,
+      "warningsMean": 0.3333333333333333,
+      "unverifiedMean": 1,
       "zeroSourceMean": 0,
-      "verdictAgreement": 0.6,
+      "verdictAgreement": 0.8,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
       "expectedClaims": [],
       "flaggedClaims": [],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "clean-metformin-dosing",
@@ -64,16 +66,18 @@
         0,
         0
       ],
-      "warningsMean": 2,
+      "warningsMean": 1.3333333333333333,
       "unverifiedMean": 0,
       "zeroSourceMean": 0,
-      "verdictAgreement": 1,
+      "verdictAgreement": 0.8571428571428571,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
       "expectedClaims": [],
       "flaggedClaims": [],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "clean-nubeqa-ppi-risk",
@@ -81,19 +85,19 @@
       "name": "Nubeqa approved Patient Information risk text",
       "runs": 3,
       "failures": [],
-      "ok": false,
+      "ok": true,
       "maxCritical": 0,
-      "claimsMin": 3,
+      "claimsMin": 7,
       "claimsMax": 8,
-      "claimSpread": 5,
-      "criticalsMean": 0.3333333333333333,
-      "criticalsMax": 1,
+      "claimSpread": 1,
+      "criticalsMean": 0,
+      "criticalsMax": 0,
       "criticalsPerRun": [
         0,
-        1,
+        0,
         0
       ],
-      "warningsMean": 3,
+      "warningsMean": 4,
       "unverifiedMean": 0,
       "zeroSourceMean": 0,
       "verdictAgreement": 1,
@@ -102,7 +106,9 @@
       "missedCategories": [],
       "expectedClaims": [],
       "flaggedClaims": [],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "clean-ozempic-isi",
@@ -110,17 +116,17 @@
       "name": "Ozempic consumer ISI",
       "runs": 3,
       "failures": [],
-      "ok": false,
+      "ok": true,
       "maxCritical": 0,
       "claimsMin": 7,
-      "claimsMax": 9,
-      "claimSpread": 2,
-      "criticalsMean": 0.3333333333333333,
-      "criticalsMax": 1,
+      "claimsMax": 7,
+      "claimSpread": 0,
+      "criticalsMean": 0,
+      "criticalsMax": 0,
       "criticalsPerRun": [
         0,
         0,
-        1
+        0
       ],
       "warningsMean": 1,
       "unverifiedMean": 0,
@@ -131,7 +137,9 @@
       "missedCategories": [],
       "expectedClaims": [],
       "flaggedClaims": [],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "defective-eliquis-sales-aid",
@@ -144,17 +152,17 @@
       "claimsMin": 6,
       "claimsMax": 6,
       "claimSpread": 0,
-      "criticalsMean": 6,
+      "criticalsMean": 6.333333333333333,
       "criticalsMax": 7,
       "criticalsPerRun": [
         6,
-        5,
+        6,
         7
       ],
-      "warningsMean": 6,
+      "warningsMean": 5.333333333333333,
       "unverifiedMean": 0.6666666666666666,
       "zeroSourceMean": 0,
-      "verdictAgreement": 0.3333333333333333,
+      "verdictAgreement": 0.5,
       "expectedCategories": [
         "drug-interaction",
         "market-claim"
@@ -172,7 +180,9 @@
         "combined with any medication without concern for interactions",
         "#1 prescribed oral anticoagulant"
       ],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "defective-humira-sales-aid",
@@ -185,10 +195,10 @@
       "claimsMin": 6,
       "claimsMax": 7,
       "claimSpread": 1,
-      "criticalsMean": 5.666666666666667,
+      "criticalsMean": 5,
       "criticalsMax": 7,
       "criticalsPerRun": [
-        6,
+        4,
         4,
         7
       ],
@@ -213,7 +223,9 @@
         "no meaningful safety trade-offs",
         "#1 prescribed biologic"
       ],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "defective-keytruda-detail-aid",
@@ -233,35 +245,34 @@
       "name": "Amvuttra ATTR-CM consumer webpage (OPDP untitled letter)",
       "runs": 3,
       "failures": [],
-      "ok": false,
+      "ok": true,
       "maxCritical": null,
-      "claimsMin": 9,
-      "claimsMax": 11,
-      "claimSpread": 2,
-      "criticalsMean": 6.666666666666667,
+      "claimsMin": 8,
+      "claimsMax": 9,
+      "claimSpread": 1,
+      "criticalsMean": 6.333333333333333,
       "criticalsMax": 10,
       "criticalsPerRun": [
-        8,
         10,
-        2
+        6,
+        3
       ],
-      "warningsMean": 7,
-      "unverifiedMean": 1,
-      "zeroSourceMean": 1.6666666666666667,
-      "verdictAgreement": 0.5,
+      "warningsMean": 6,
+      "unverifiedMean": 0.3333333333333333,
+      "zeroSourceMean": 0.3333333333333333,
+      "verdictAgreement": 0.2222222222222222,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
       "expectedClaims": [
-        "Proven to help people with ATTR-CM live longer",
         "36% Lower Risk"
       ],
       "flaggedClaims": [
         "36% Lower Risk"
       ],
-      "missedClaims": [
-        "Proven to help people with ATTR-CM live longer"
-      ]
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": "3/5"
     },
     {
       "id": "defective-opdp-breztri-salesaid",
@@ -274,15 +285,15 @@
       "claimsMin": 5,
       "claimsMax": 5,
       "claimSpread": 0,
-      "criticalsMean": 2,
-      "criticalsMax": 2,
+      "criticalsMean": 2.3333333333333335,
+      "criticalsMax": 3,
       "criticalsPerRun": [
         2,
         2,
-        2
+        3
       ],
-      "warningsMean": 7.333333333333333,
-      "unverifiedMean": 1.6666666666666667,
+      "warningsMean": 6.333333333333333,
+      "unverifiedMean": 3.3333333333333335,
       "zeroSourceMean": 0,
       "verdictAgreement": 0.6,
       "expectedCategories": [],
@@ -296,7 +307,9 @@
         "49% Observed relative difference",
         "significant reduction in severe exacerbations"
       ],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "defective-opdp-brukinsa-tvad",
@@ -307,19 +320,19 @@
       "ok": true,
       "maxCritical": null,
       "claimsMin": 5,
-      "claimsMax": 6,
-      "claimSpread": 1,
-      "criticalsMean": 1.3333333333333333,
-      "criticalsMax": 2,
+      "claimsMax": 7,
+      "claimSpread": 2,
+      "criticalsMean": 1.6666666666666667,
+      "criticalsMax": 3,
       "criticalsPerRun": [
+        3,
         1,
-        1,
-        2
+        1
       ],
       "warningsMean": 5.333333333333333,
-      "unverifiedMean": 0.3333333333333333,
-      "zeroSourceMean": 0.3333333333333333,
-      "verdictAgreement": 0.4,
+      "unverifiedMean": 1.3333333333333333,
+      "zeroSourceMean": 1,
+      "verdictAgreement": 1,
       "expectedCategories": [],
       "matchedCategories": [],
       "missedCategories": [],
@@ -331,7 +344,9 @@
         "only BTKi proven superior",
         "low rates of cardiovascular events"
       ],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     },
     {
       "id": "defective-ozempic-detail-aid",
@@ -344,17 +359,17 @@
       "claimsMin": 6,
       "claimsMax": 7,
       "claimSpread": 1,
-      "criticalsMean": 4.666666666666667,
-      "criticalsMax": 5,
+      "criticalsMean": 5.333333333333333,
+      "criticalsMax": 6,
       "criticalsPerRun": [
-        4,
         5,
+        6,
         5
       ],
-      "warningsMean": 4.333333333333333,
+      "warningsMean": 4.666666666666667,
       "unverifiedMean": 0.3333333333333333,
       "zeroSourceMean": 0,
-      "verdictAgreement": 1,
+      "verdictAgreement": 0.5,
       "expectedCategories": [
         "off-label",
         "market-claim"
@@ -370,7 +385,9 @@
       "flaggedClaims": [
         "#1 prescribed GLP-1 for weight loss"
       ],
-      "missedClaims": []
+      "missedClaims": [],
+      "totalityOk": true,
+      "totalityNeeded": null
     }
   ]
 }

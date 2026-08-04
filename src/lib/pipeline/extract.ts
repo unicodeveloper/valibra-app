@@ -32,7 +32,10 @@ export function extractClaims(assetText: string): Promise<Extraction> {
       "assertions (usually the body/bullets) and quote each as the assertion itself, without the " +
       "product-name prefix or banner formatting. For each claim, also write a " +
       "concise literature-search query (searchQuery): the drug's generic/active-ingredient name " +
-      "plus the scientific concepts, stripped of brand names and marketing puffery. Also identify " +
+      "plus the scientific concepts, stripped of brand names and marketing puffery. The query is " +
+      "matched against indexed literature, so it must not carry the asset's own timepoints, " +
+      "figures, or trial-specific population labels — those appear in no document and the search " +
+      "returns nothing at all. Keep the substantive outcome words. Also identify " +
       "the primary drug/product being promoted (drugName) as a CLEAN generic/active-ingredient " +
       "name only — lowercase, no brand styling, no parentheticals, no dosage form, no headline " +
       "text (e.g. 'metformin', not 'METFORMIN (metformin hydrochloride) — proven control'). Do not " +

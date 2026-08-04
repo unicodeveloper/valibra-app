@@ -47,8 +47,19 @@ export const ClaimSchema = z.object({
     .string()
     .describe(
       "A concise literature-search query for this claim: the drug's GENERIC/active-ingredient " +
-        "name plus the scientific concepts (condition, outcome, comparator). Strip brand names, " +
-        "marketing adjectives, and quantitative puffery. E.g. 'metformin glycemic control type 2 diabetes'.",
+        "name plus the scientific concepts (condition, outcome, comparator). 4-8 terms. " +
+        "These are matched against indexed document chunks, so include only what a paper about " +
+        "the underlying science would contain, and EXCLUDE anything describing how THIS asset " +
+        "presents it: timepoints and durations ('3.5 years', 'over 52 weeks', 'at week 12'), " +
+        "figures and statistics ('36%', 'p=0.02', 'rate ratio 0.80', '49% relative difference'), " +
+        "and trial-specific population labels ('stabilizer-naive', 'ITT population', 'all comers'). " +
+        "Each of those narrows the query to text that appears in no document and the search " +
+        "returns nothing. Keep the substantive outcome words — mortality, survival, exacerbations, " +
+        "glycemic control — since a query without them retrieves the wrong literature, which is " +
+        "worse than a query that finds nothing. Named trials (SUSTAIN-6, ETHOS) are fine. " +
+        "Strip brand names and marketing adjectives. E.g. 'metformin glycemic control type 2 " +
+        "diabetes'; for 'The risk of death was lower over 3.5 years with AMVUTTRA, 36% Lower Risk " +
+        "compared to placebo' write 'vutrisiran transthyretin amyloid cardiomyopathy mortality placebo'.",
     ),
   location: z
     .string()

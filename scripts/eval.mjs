@@ -148,6 +148,29 @@ function claimFlaggedEveryRun(runs, needle) {
   );
 }
 
+/**
+ * Some FDA findings are about the TOTALITY of a set of claims, not about any one
+ * of them standing alone — Amvuttra's letter says so in terms. Asserting that a
+ * particular sentence must flag would then be stricter than what FDA actually
+ * found, and a corpus that overstates its own authority is no better than one
+ * that invents it. So those assets assert that at least `minFlagged` of the set
+ * draws a flag, in every run.
+ */
+function totalityMet(runs, totality) {
+  if (!totality?.claims?.length) return true;
+  const need = totality.minFlagged ?? totality.claims.length;
+  return runs.every((r) => {
+    const hit = totality.claims.filter((t) =>
+      r.findings.some(
+        (f) =>
+          (f.severity === "critical" || f.severity === "warning") &&
+          (f.claimText ?? "").toLowerCase().includes(t.toLowerCase()),
+      ),
+    ).length;
+    return hit >= need;
+  });
+}
+
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const fmt = (x, d = 1) => (x == null ? "—" : Number(x).toFixed(d));
 
@@ -181,6 +204,8 @@ async function evaluateAsset(asset) {
   const expectedClaims = asset.expect?.flaggedClaims ?? [];
   const flaggedClaims = expectedClaims.filter((t) => claimFlaggedEveryRun(runs, t));
   const missedClaims = expectedClaims.filter((t) => !flaggedClaims.includes(t));
+  const totality = asset.expect?.totality ?? null;
+  const totalityOk = totalityMet(runs, totality);
 
   // A clean asset passes only if it clears its bar on EVERY run — a bar met on
   // average but blown on one run in three is not a bar a reviewer can trust.
@@ -188,7 +213,9 @@ async function evaluateAsset(asset) {
   const ok =
     asset.kind === "clean"
       ? maxCritical == null || Math.max(...crits) <= maxCritical
-      : hit.length === expected.length && flaggedClaims.length === expectedClaims.length;
+      : hit.length === expected.length &&
+        flaggedClaims.length === expectedClaims.length &&
+        totalityOk;
 
   return {
     id: asset.id,
@@ -214,6 +241,8 @@ async function evaluateAsset(asset) {
     expectedClaims,
     flaggedClaims,
     missedClaims,
+    totalityOk,
+    totalityNeeded: totality ? `${totality.minFlagged ?? totality.claims.length}/${totality.claims.length}` : null,
   };
 }
 
@@ -292,6 +321,7 @@ for (const r of results.filter((x) => !x.ok)) {
     const parts = [];
     if (r.missedCategories.length) parts.push(`categories: ${r.missedCategories.join(", ")}`);
     if (r.missedClaims?.length) parts.push(`claims never flagged: "${r.missedClaims.join('" / "')}"`);
+    if (r.totalityOk === false) parts.push(`totality: fewer than ${r.totalityNeeded} of the cited set flagged`);
     console.log(`  ✗ ${r.id}: missed ${parts.join("; ")}`);
   }
 }

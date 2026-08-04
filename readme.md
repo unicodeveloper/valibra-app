@@ -1,4 +1,8 @@
-# Valibra - Open MLR Review
+<p align="center">
+  <img src="https://raw.githubusercontent.com/unicodeveloper/openmlr/main/public/brand/openmlr-mark-transparent-96.png" alt="" width="88" height="88">
+</p>
+
+# OpenMLR
 
 An open-source, self-hostable **MLR (Medical-Legal-Regulatory) pre-check** for pharma promotional
 content. It verifies every claim against real, licensed primary sources, not a private library and shows its
@@ -11,9 +15,30 @@ work.
 - **Retrieve, then verify.** The LLM never generates a citation — every citation points at a
   document Valyu actually returned.
 - **Abstain, don't bluff.** No evidence → `no_evidence`, never a confident guess.
+- **Absence is not contradiction.** Sources arrive as windows of longer documents, so "the label
+  doesn't mention this" means the section wasn't retrieved, not that the claim is false. A claim is
+  only `contradicted` when the evidence affirmatively says otherwise.
+- **Not finding something is not a finding.** Four distinct outcomes, and the reviewer can tell them
+  apart: we searched and found nothing · we searched and what we found doesn't address it · the
+  search failed · the evidence contradicts the claim. Only the last is a defect in the copy.
 - **A failed search is not "no evidence."** Retrieval errors surface separately, and the claim is
   marked un-checked rather than silently cleared.
+- **Promotional rules only apply to promotional material.** Fair balance and the boxed-warning guard
+  don't run against a labeling excerpt, a bare ISI, or a pasted fragment — there is nothing to
+  balance, and firing anyway flags every clean asset.
 - **Self-host + bring-your-own-key.** Your asset text and keys stay in your environment.
+
+### Severity
+
+| | Meaning |
+|---|---|
+| **critical** | The evidence contradicts the claim, or addresses it and fails to bear it out. A defect in the copy. |
+| **warning** | Partly supported — the right source, missing an element. |
+| **unverified** | We could not check it. Nothing retrieved, or nothing retrieved that speaks to it. **Not** a finding against the copy; attach a reference. |
+| **info** | Supported by the cited evidence. |
+
+`unverified` exists because collapsing it into `critical` is what made an ISI transcribed from
+approved labeling come back covered in red.
 
 ## Features
 
@@ -33,11 +58,13 @@ pipeline works — no spinner, the real audit trail.
 
 | Feature | What it does | Evidence |
 |---|---|---|
-| Fair-balance / ISI | Is safety information proportionate to the efficacy messaging, measured against the live label? | DailyMed |
+| Asset classification | Decides what was pasted — promotional piece, ISI, labeling excerpt, fragment, publication — and gates the promotional-materials checks on it | LLM |
+| Fair-balance / ISI | Is safety information proportionate to the efficacy messaging, measured against the live label? Runs only on promotional material making benefit claims | DailyMed |
 | On-/off-label detector | Flags claims that go beyond the approved indication | DailyMed |
 | Adverse-event cross-check | Contradicts tolerability/safety claims against real post-market reports | openFDA FAERS |
 | Boxed-warning & contraindication omission | Guards against required safety language the asset left out | DailyMed |
 | Drug-interaction checker | Validates interaction claims against the label's DRUG INTERACTIONS section | DailyMed |
+| Section-targeted label retrieval | The label is fetched as four separate windowed queries — indications, boxed warning/contraindications, warnings and precautions, adverse reactions — because a blended query returns the boxed warning every time and the rest never arrives | DailyMed |
 
 ### Regulatory & competitive
 
@@ -81,15 +108,55 @@ work elsewhere in the app.
 | HCP verification & transparency | Verify an NPI, taxonomy and practice location for KOL vetting / Sunshine Act review | NPI Registry |
 | Indication-language normalization | Maps promotional phrasing to coded indications and flags indication creep | WHO ICD |
 
+## Calibration — measuring false positives, not just catches
+
+A tool tuned only on copy that *should* flag optimises sensitivity and never measures specificity.
+That is how this one once returned 19 findings on consumer ISI written from approved patient
+labeling — an experienced reg ad/promo reviewer tried it, and every one of those findings was wrong.
+
+`npm run eval` runs a corpus through the real review path and reports the trade-off both ways.
+
+```bash
+npm run dev                       # in one terminal
+npm run eval                      # whole corpus, 2 runs each
+npm run eval -- --runs 3          # tighter spread estimate
+npm run eval -- --only clean      # just the specificity set
+```
+
+The corpus deliberately does not rest on the author's judgement:
+
+- **clean** assets — copy that should return **zero** criticals, including FDA-approved Patient
+  Information taken verbatim from the DailyMed SPL. Criticals on it are false positives by
+  definition rather than by opinion.
+- **defective** assets — copy FDA itself quoted as violative in OPDP warning and untitled letters
+  (Breztri, Amvuttra, Brukinsa), with FDA's stated determination recorded in each file. Where FDA's
+  finding was about the *totality* of a set of claims rather than any one of them, the corpus says
+  so and asserts the set, not the sentence.
+
+Defects are asserted at **claim level**: a defect counts as caught only when the offending claim
+draws a critical-or-warning finding in *every* run. Category presence proved a weak proxy — it
+scored 100% while a claim was going entirely unflagged.
+
+Every asset runs N times and the harness reports **spread alongside the mean**, because claim
+extraction and retrieval both vary run to run and a single run cannot distinguish a fix from noise.
+The harness exits non-zero when the corpus doesn't pass, so it can gate a change.
+
+See [`eval/README.md`](eval/README.md) for the corpus format and metric definitions.
+
+> **On the corpus.** The clean assets were assembled by the same process that produced the bugs they
+> exist to catch, and one already contained an error the tool correctly caught. A clean set written
+> or reviewed by a regulatory professional is what would make the specificity number credible to
+> one — contributions very welcome.
+
 ## How this compares
 
-The MLR category competes on workflow — routing, approvals, version control. Valibra doesn't
+The MLR category competes on workflow — routing, approvals, version control. OpenMLR doesn't
 fight there. It competes on **evidence**: every check below runs against a licensed primary source,
 not a private claims library you have to build and keep current.
 
 **●** core capability · **◐** partial or implied · **○** not advertised
 
-| Capability | Valibra | Veeva | Revisto | ERMA | Papercurve |
+| Capability | OpenMLR | Veeva | Revisto | ERMA | Papercurve |
 |---|:--:|:--:|:--:|:--:|:--:|
 | **Substantiation** |
 | Claim extraction & typing | ● | ● | ● | ● | ◐ |
@@ -175,9 +242,12 @@ npm run dev                  # http://localhost:3000
 Click **Run review** on the built-in fictional sample. (Don't paste confidential assets into a
 hosted instance — self-host for real work.)
 
+Changing anything in the pipeline? Run `npm run eval` before and after — see
+[Calibration](#calibration--measuring-false-positives-not-just-catches).
+
 ### Modes: who pays for Valyu
 
-Valibra runs in one of two modes, set by `NEXT_PUBLIC_APP_MODE`:
+OpenMLR runs in one of two modes, set by `NEXT_PUBLIC_APP_MODE`:
 
 | Mode | Sign-in | Who pays for retrieval | Configure |
 | --- | --- | --- | --- |
@@ -195,11 +265,62 @@ the key-based path rather than locking everyone out. The billing decision lives 
 `src/lib/valyu-credentials.ts` — which every Valyu call routes through, so the two lanes stay
 behaviourally identical.
 
-### Optional: persist the audit trail and claims library
+### Deploy your own (Railway)
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openmlr?referralCode=yuv1Gy&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+One click, then set two variables — `VALYU_API_KEY` and `OPENAI_API_KEY`. Those are
+always yours to supply: the template can provision the infrastructure, but not the
+credentials that pay for retrieval and inference. If it doesn't include a database, add
+one as in step 2 below; persistence is optional either way.
+
+**Or deploy from your own fork.** The repo ships a [`railway.json`](railway.json), so
+this is mostly clicking through — no Dockerfile, no build settings to fill in.
+
+1. **Create the project.** Railway → **New Project** → **Deploy from GitHub repo**, and
+   pick your fork. The `RAILPACK` builder in `railway.json` detects Next.js on its own.
+
+2. **Add Postgres** — **New** → **Database** → **Add PostgreSQL**, in the same project.
+   Optional: without it the pipeline still returns full reviews, you just lose the audit
+   trail and claims library.
+
+3. **Point the app at the database.** On the *app* service → **Variables** → add
+   `DATABASE_URL` as a reference to the Postgres service's `DATABASE_URL` (Railway's
+   variable picker; the value looks like `${{Postgres.DATABASE_URL}}`). Use the private
+   `.railway.internal` host — `db:init` detects it and skips TLS, which the internal
+   network doesn't need.
+
+4. **Set the rest of the variables:**
+
+   | Variable | Value |
+   | --- | --- |
+   | `VALYU_API_KEY` | your Valyu key — this deployment pays for every search |
+   | `OPENAI_API_KEY` | your OpenAI key |
+   | `NEXT_PUBLIC_APP_MODE` | `self-hosted` (or omit — anything that isn't `valyu` fails safe to it) |
+
+   Leave the OAuth block unset. It only applies to `valyu` mode, where reviewers sign in
+   and spend their own credits.
+
+5. **Generate a domain** — app service → **Settings** → **Networking** → **Generate
+   Domain**. Railway sets `PORT` and `next start` honours it; nothing to configure.
+
+Schema migration is wired to the pre-deploy hook (`npm run db:init`), so tables are
+created and kept current on every deploy. It is a no-op when `DATABASE_URL` is unset,
+which is what makes the database genuinely optional. Failed deploys retry three times
+before Railway gives up.
+
+> **Don't point a public instance at confidential assets.** Asset text is sent to Valyu
+> and OpenAI, and a deployment with `VALYU_API_KEY` set bills every visitor's review to
+> you. Put it behind access control, or run `valyu` mode so reviewers spend their own
+> credits.
+
+### Optional: persist the audit trail and claims library (local)
+
+For local development. On Railway, step 2 above covers this.
 
 ```bash
 docker compose up -d         # Postgres on :5432
-export DATABASE_URL=postgres://valibra:valibra@localhost:5432/valibra
+export DATABASE_URL=postgres://openmlr:openmlr@localhost:5432/openmlr
 npm run db:init              # create tables
 ```
 
@@ -217,12 +338,16 @@ src/lib/deepresearch.ts   DeepResearch lane (device · HCP · indication · surv
 src/lib/oauth.ts          Valyu OAuth (PKCE) — authorize redirect, code challenge
 src/lib/app-mode.ts       self-hosted vs valyu mode
 src/lib/pipeline/         one module per check + index.ts (orchestrator)
+src/lib/pipeline/assetProfile.ts  what kind of asset this is; gates the promotional checks
 src/lib/db/               optional Postgres persistence + claims library
 src/app/api/              review · dossier · deepresearch · library · oauth (token · refresh)
 src/app/auth/valyu/callback   OAuth redirect handler
 src/app/stores/auth-store.ts  session + token refresh (zustand)
 src/app/components/auth/  sign-in modal · account menu · initializer
 src/app/views/            Review · Library · Dossier · Research tabs
+scripts/eval.mjs          evaluation harness (npm run eval)
+eval/corpus/              FDA-sourced test assets — clean + defective
+eval/results/latest.json  current scoreboard
 ```
 
 ## Author
