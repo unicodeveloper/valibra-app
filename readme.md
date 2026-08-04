@@ -261,7 +261,52 @@ the key-based path rather than locking everyone out. The billing decision lives 
 `src/lib/valyu-credentials.ts` — which every Valyu call routes through, so the two lanes stay
 behaviourally identical.
 
-### Optional: persist the audit trail and claims library
+### Deploy your own (Railway)
+
+The repo ships a [`railway.json`](railway.json), so a self-hosted instance is
+mostly clicking through. Everything below is the free-of-config path — no Dockerfile,
+no build settings to fill in.
+
+1. **Create the project.** Railway → **New Project** → **Deploy from GitHub repo**, and
+   pick your fork. The `RAILPACK` builder in `railway.json` detects Next.js on its own.
+
+2. **Add Postgres** — **New** → **Database** → **Add PostgreSQL**, in the same project.
+   Optional: without it the pipeline still returns full reviews, you just lose the audit
+   trail and claims library.
+
+3. **Point the app at the database.** On the *app* service → **Variables** → add
+   `DATABASE_URL` as a reference to the Postgres service's `DATABASE_URL` (Railway's
+   variable picker; the value looks like `${{Postgres.DATABASE_URL}}`). Use the private
+   `.railway.internal` host — `db:init` detects it and skips TLS, which the internal
+   network doesn't need.
+
+4. **Set the rest of the variables:**
+
+   | Variable | Value |
+   | --- | --- |
+   | `VALYU_API_KEY` | your Valyu key — this deployment pays for every search |
+   | `OPENAI_API_KEY` | your OpenAI key |
+   | `NEXT_PUBLIC_APP_MODE` | `self-hosted` (or omit — anything that isn't `valyu` fails safe to it) |
+
+   Leave the OAuth block unset. It only applies to `valyu` mode, where reviewers sign in
+   and spend their own credits.
+
+5. **Generate a domain** — app service → **Settings** → **Networking** → **Generate
+   Domain**. Railway sets `PORT` and `next start` honours it; nothing to configure.
+
+Schema migration is wired to the pre-deploy hook (`npm run db:init`), so tables are
+created and kept current on every deploy. It is a no-op when `DATABASE_URL` is unset,
+which is what makes the database genuinely optional. Failed deploys retry three times
+before Railway gives up.
+
+> **Don't point a public instance at confidential assets.** Asset text is sent to Valyu
+> and OpenAI, and a deployment with `VALYU_API_KEY` set bills every visitor's review to
+> you. Put it behind access control, or run `valyu` mode so reviewers spend their own
+> credits.
+
+### Optional: persist the audit trail and claims library (local)
+
+For local development. On Railway, step 2 above covers this.
 
 ```bash
 docker compose up -d         # Postgres on :5432
