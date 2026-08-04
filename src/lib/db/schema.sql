@@ -246,8 +246,16 @@ CREATE TABLE IF NOT EXISTS reference_packs (
   owner       TEXT,                    -- NULL in self-hosted (global), user id in valyu mode
   name        TEXT NOT NULL,
   drug_name   TEXT,                    -- optional: scopes the pack to one product
+  -- 'reference' = the reviewer's approved sources; feeds claim substantiation.
+  -- 'precedent' = enforcement letters, rulings, guidance; NEVER feeds
+  -- substantiation. A letter quotes the claim it objects to, which makes it the
+  -- best semantic match for that claim, and in the substantiation lane it would
+  -- read as evidence for the copy it condemns.
+  kind        TEXT NOT NULL DEFAULT 'reference',
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE reference_packs ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'reference';
 
 CREATE INDEX IF NOT EXISTS reference_packs_owner_idx ON reference_packs (owner);
 

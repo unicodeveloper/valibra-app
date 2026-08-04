@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createPack, addDocument, listPacks, deletePack } from "@/lib/references";
 import { withPersistenceScope, currentIdentity, ValyuAuthError } from "@/lib/valyu-credentials";
+import { precedentSummary } from "@/lib/precedent";
 
 export const runtime = "nodejs";
 export const maxDuration = 120; // embedding a long document takes a while
@@ -17,6 +18,7 @@ export const maxDuration = 120; // embedding a long document takes a while
 const CreateSchema = z.object({
   name: z.string().min(1, "name is required"),
   drugName: z.string().nullable().default(null),
+  kind: z.enum(["reference", "precedent"]).default("reference"),
   documents: z
     .array(
       z.object({
@@ -32,7 +34,14 @@ export async function GET(req: Request) {
   return withPersistenceScope(req, async () => {
     try {
       const packs = await listPacks(await currentIdentity());
-      return NextResponse.json({ packs, persistenceEnabled: Boolean(process.env.DATABASE_URL) });
+      return NextResponse.json({
+        packs,
+        // The seeded OPDP library ships with the app: metadata only here, so the
+        // tab can list it without shipping 159k characters of letter text to the
+        // browser on every load.
+        precedent: precedentSummary(),
+        persistenceEnabled: Boolean(process.env.DATABASE_URL),
+      });
     } catch (err) {
       if (err instanceof ValyuAuthError) {
         return NextResponse.json({ error: err.message, requiresReauth: true }, { status: 401 });
@@ -53,8 +62,8 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      const { name, drugName, documents } = parsed.data;
-      const packId = await createPack(name, drugName, await currentIdentity());
+      const { name, drugName, kind, documents } = parsed.data;
+      const packId = await createPack(name, drugName, await currentIdentity(), kind);
 
       let chunks = 0;
       for (const d of documents) {

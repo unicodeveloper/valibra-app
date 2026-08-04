@@ -17,9 +17,26 @@ interface Pack {
   id: string;
   name: string;
   drugName: string | null;
+  kind: "reference" | "precedent";
   docCount: number;
   chunkCount: number;
   createdAt: string;
+}
+
+interface PrecedentLetter {
+  date: string;
+  company: string;
+  product: string;
+  url: string;
+}
+
+interface Precedent {
+  year: string;
+  count: number;
+  newest: string | null;
+  oldest: string | null;
+  source: string;
+  letters: PrecedentLetter[];
 }
 
 interface PendingDoc {
@@ -38,9 +55,12 @@ export function ReferencesView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [precedent, setPrecedent] = useState<Precedent | null>(null);
+  const [showLetters, setShowLetters] = useState(false);
 
   const [name, setName] = useState("");
   const [drug, setDrug] = useState("");
+  const [kind, setKind] = useState<"reference" | "precedent">("reference");
   const [docs, setDocs] = useState<PendingDoc[]>([]);
   const [paste, setPaste] = useState("");
   const [saving, setSaving] = useState(false);
@@ -65,6 +85,7 @@ export function ReferencesView() {
       }
       setNeedsSignIn(false);
       setPacks(data.packs ?? []);
+      setPrecedent(data.precedent ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -144,6 +165,7 @@ export function ReferencesView() {
         body: JSON.stringify({
           name: name.trim(),
           drugName: drug.trim() || null,
+          kind,
           documents: docs,
         }),
       });
@@ -151,6 +173,7 @@ export function ReferencesView() {
       if (!res.ok) throw new Error(data.error ?? "Could not create the pack.");
       setName("");
       setDrug("");
+      setKind("reference");
       setDocs([]);
       await load();
     } catch (e) {
@@ -220,6 +243,32 @@ export function ReferencesView() {
               />
             </div>
 
+            <div className="row" style={{ marginTop: 10, gap: 14 }}>
+              <label className="hint" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  checked={kind === "reference"}
+                  onChange={() => setKind("reference")}
+                />
+                Substantiation: sources my claims are cited to
+              </label>
+              <label className="hint" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input
+                  type="radio"
+                  checked={kind === "precedent"}
+                  onChange={() => setKind("precedent")}
+                />
+                Precedent: enforcement letters, rulings, guidance
+              </label>
+            </div>
+            {kind === "precedent" && (
+              <p className="hint" style={{ marginTop: 6 }}>
+                Precedent documents ground findings but never substantiate a claim. An enforcement
+                letter quotes the copy it objects to, so used as substantiation it would read as
+                support for the very claim it condemns.
+              </p>
+            )}
+
             <div className="row" style={{ marginTop: 10 }}>
               <input
                 ref={fileRef}
@@ -277,6 +326,48 @@ export function ReferencesView() {
             </p>
           )}
 
+          {precedent && precedent.count > 0 && (
+            <section style={{ marginTop: 22 }}>
+              <h3 className="view-t" style={{ fontSize: "var(--t-md)" }}>
+                Built in: FDA enforcement precedent
+              </h3>
+              <p className="hint" style={{ marginTop: 4 }}>
+                Every OPDP untitled letter issued in {precedent.year} ({precedent.count} letters,{" "}
+                {precedent.oldest} to {precedent.newest}), shipped with the app. Reviews cite these
+                when grounding a concern in enforcement precedent.
+              </p>
+              {/* Not a reference pack, and the distinction is not cosmetic. A
+                  letter quotes the claim it objects to, so it would be the best
+                  possible semantic match for that claim — in the substantiation
+                  lane it would read as evidence FOR the copy it condemns. */}
+              <p className="hint" style={{ marginTop: 6 }}>
+                These ground findings in precedent. They are never used to substantiate a claim:
+                a letter quotes the copy it objects to, so it would otherwise read as support for
+                the very claim it condemns. FDA positions also shift, so check the date on anything
+                you rely on.
+              </p>
+              <button className="link xs" onClick={() => setShowLetters((v) => !v)}>
+                {showLetters ? "hide" : `show all ${precedent.count}`}
+              </button>
+              {showLetters && (
+                <ul className="hint" style={{ marginTop: 10, paddingLeft: 18 }}>
+                  {precedent.letters.map((l) => (
+                    <li key={`${l.date}-${l.product}`} style={{ marginBottom: 3 }}>
+                      <span style={{ fontVariantNumeric: "tabular-nums" }}>{l.date}</span>{" "}
+                      <a href={l.url} target="_blank" rel="noreferrer">
+                        {l.product}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          <h3 className="view-t" style={{ fontSize: "var(--t-md)", marginTop: 24 }}>
+            Your packs
+          </h3>
+
           {loading ? (
             <p className="hint" style={{ marginTop: 18 }}>
               Loading…
@@ -301,6 +392,7 @@ export function ReferencesView() {
                     <span className="f-mid">
                       <h3 className="f-title">{p.name}</h3>
                       <span className="f-meta">
+                        {p.kind === "precedent" && <span className="tag">precedent</span>}
                         {p.drugName && <span className="tag">{p.drugName}</span>}
                         <span className="tag">
                           {p.docCount} doc{p.docCount === 1 ? "" : "s"}

@@ -76,10 +76,13 @@ export function chunkText(text: string): string[] {
   return out;
 }
 
+export type PackKind = "reference" | "precedent";
+
 export interface PackSummary {
   id: string;
   name: string;
   drugName: string | null;
+  kind: PackKind;
   docCount: number;
   chunkCount: number;
   createdAt: string;
@@ -90,13 +93,14 @@ export async function createPack(
   name: string,
   drugName: string | null,
   owner: Owner,
+  kind: PackKind = "reference",
 ): Promise<string> {
   const db = sql();
   if (!db) throw new Error("Reference packs need a database. Set DATABASE_URL.");
   const id = randomUUID();
   await db`
-    INSERT INTO reference_packs (id, owner, name, drug_name)
-    VALUES (${id}, ${owner?.sub ?? null}, ${name}, ${drugName})
+    INSERT INTO reference_packs (id, owner, name, drug_name, kind)
+    VALUES (${id}, ${owner?.sub ?? null}, ${name}, ${drugName}, ${kind})
   `;
   return id;
 }
@@ -150,9 +154,9 @@ export async function listPacks(owner: Owner): Promise<PackSummary[]> {
   const db = sql();
   if (!db) return [];
   const rows = await db<
-    { id: string; name: string; drug_name: string | null; docs: string; chunks: string; created_at: Date }[]
+    { id: string; name: string; drug_name: string | null; kind: string; docs: string; chunks: string; created_at: Date }[]
   >`
-    SELECT p.id, p.name, p.drug_name, p.created_at,
+    SELECT p.id, p.name, p.drug_name, p.kind, p.created_at,
            COUNT(DISTINCT d.id) AS docs,
            COUNT(c.id)          AS chunks
     FROM reference_packs p
@@ -166,6 +170,7 @@ export async function listPacks(owner: Owner): Promise<PackSummary[]> {
     id: r.id,
     name: r.name,
     drugName: r.drug_name,
+    kind: (r.kind === "precedent" ? "precedent" : "reference") as PackKind,
     docCount: Number(r.docs),
     chunkCount: Number(r.chunks),
     createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
@@ -195,7 +200,11 @@ export async function searchPack(
     SELECT c.text, c.ordinal, c.embedding, d.filename
     FROM reference_chunks c
     JOIN reference_docs d ON d.id = c.doc_id
-    WHERE c.pack_id = ${packId} AND c.embedding IS NOT NULL
+    JOIN reference_packs p ON p.id = c.pack_id
+    -- Precedent packs are excluded here, not filtered by the caller. A caller
+    -- that forgets would silently feed enforcement letters into substantiation,
+    -- so the guarantee belongs in the query that serves it.
+    WHERE c.pack_id = ${packId} AND p.kind <> 'precedent' AND c.embedding IS NOT NULL
   `;
   if (rows.length === 0) return [];
 

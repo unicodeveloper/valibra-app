@@ -74,7 +74,7 @@ export function ReviewView({
   /** The reviewer's own reference pack, if they have one selected. Feeds claim
    *  substantiation only; label, FAERS and patent checks stay on live retrieval. */
   const [referencePackId, setReferencePackId] = useState<string | null>(null);
-  const [packs, setPacks] = useState<{ id: string; name: string; chunkCount: number }[]>([]);
+  const [packs, setPacks] = useState<{ id: string; name: string; chunkCount: number; kind?: string }[]>([]);
 
   const router = useRouter();
 
@@ -213,7 +213,8 @@ export function ReviewView({
         const res = await fetch("/api/references");
         if (!res.ok) return; // signed out or no DB: the picker simply stays hidden
         const data = await res.json();
-        if (!cancelled) setPacks(data.packs ?? []);
+        // Precedent packs never substantiate, so they are not offered here.
+        if (!cancelled) setPacks((data.packs ?? []).filter((p: { kind?: string }) => p.kind !== "precedent"));
       } catch {
         /* composing a review must not depend on this */
       }
@@ -1102,7 +1103,7 @@ function Compose({
   assetText: string;
   setAssetText: (s: string) => void;
   markets: Market[];
-  packs: { id: string; name: string; chunkCount: number }[];
+  packs: { id: string; name: string; chunkCount: number; kind?: string }[];
   referencePackId: string | null;
   setReferencePackId: (id: string | null) => void;
   toggleMarket: (m: Market) => void;
