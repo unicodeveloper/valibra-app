@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/unicodeveloper/openmlr/main/public/brand/openmlr-mark-transparent-96.png" alt="" width="88" height="88">
+</p>
+
 # OpenMLR
 
 An open-source, self-hostable **MLR (Medical-Legal-Regulatory) pre-check** for pharma promotional
@@ -263,9 +267,15 @@ behaviourally identical.
 
 ### Deploy your own (Railway)
 
-The repo ships a [`railway.json`](railway.json), so a self-hosted instance is
-mostly clicking through. Everything below is the free-of-config path — no Dockerfile,
-no build settings to fill in.
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openmlr?referralCode=yuv1Gy&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+One click, then set two variables — `VALYU_API_KEY` and `OPENAI_API_KEY`. Those are
+always yours to supply: the template can provision the infrastructure, but not the
+credentials that pay for retrieval and inference. If it doesn't include a database, add
+one as in step 2 below; persistence is optional either way.
+
+**Or deploy from your own fork.** The repo ships a [`railway.json`](railway.json), so
+this is mostly clicking through — no Dockerfile, no build settings to fill in.
 
 1. **Create the project.** Railway → **New Project** → **Deploy from GitHub repo**, and
    pick your fork. The `RAILPACK` builder in `railway.json` detects Next.js on its own.
