@@ -54,6 +54,8 @@ function fmtWhen(iso: string): string {
   });
 }
 
+const DEFAULT_ASSET_NAME = "Ozempic";
+
 export function ReviewView({
   onGenerateDossier,
   onStartDr,
@@ -68,7 +70,7 @@ export function ReviewView({
     decisions: Record<string, { decision: Decision; rationale?: string; suggestedRevision?: string }>;
   } | null;
 }) {
-  const [assetName, setAssetName] = useState("Ozempic");
+  const [assetName, setAssetName] = useState(DEFAULT_ASSET_NAME);
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
   const [markets, setMarkets] = useState<Market[]>(["US"]);
   /** The reviewer's own reference pack, if they have one selected. Feeds claim
@@ -1114,6 +1116,64 @@ function Compose({
   /** Optional bar shown above the form (e.g. the duplicate-review notice). */
   notice?: ReactNode;
 }) {
+  /** Reading a long PDF takes a few seconds; without this the control looks dead. */
+  const [readingAsset, setReadingAsset] = useState(false);
+  const [assetSource, setAssetSource] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const assetFileRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Load the asset from a file instead of the clipboard.
+   *
+   * The reviewer who prompted this work pointed out that a paste box rules out
+   * the documents MLR actually reviews: long pieces that arrive as PDFs. The
+   * text is extracted in the browser, so the file itself never leaves the
+   * machine, only the copy under review, which the pipeline needs anyway.
+   */
+  async function onAssetFile(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setReadingAsset(true);
+    setFileError(null);
+    try {
+      let text = "";
+      let note = "";
+      if (/\.pdf$/i.test(file.name)) {
+        const { extractPdfText } = await import("../pdf-text");
+        const r = await extractPdfText(file);
+        text = r.text;
+        note = `${r.pages} page${r.pages === 1 ? "" : "s"}`;
+        if (!text.trim()) {
+          // Nearly always a scan. Loading an empty box and letting them press
+          // Run would spend credits reviewing nothing.
+          setFileError(
+            `${file.name}: no text found across ${r.pages} page(s). If it is a scan it needs OCR first.`,
+          );
+          return;
+        }
+        if (r.emptyPages > 0) note += `, ${r.emptyPages} without extractable text`;
+      } else if (/\.(txt|md|markdown)$/i.test(file.name)) {
+        text = await file.text();
+      } else {
+        setFileError(`${file.name}: use a PDF, .txt or .md, or paste the copy below.`);
+        return;
+      }
+      setAssetText(text);
+      // Replace the initial default too: a PDF that lands under the name of the
+      // sample it replaced is worse than no name at all. A name the reviewer
+      // actually typed is left alone.
+      if (!assetName.trim() || assetName === DEFAULT_ASSET_NAME) {
+        setAssetName(file.name.replace(/\.[^.]+$/, ""));
+      }
+      setAssetSource(note ? `${file.name} · ${note}` : file.name);
+    } catch (e) {
+      setFileError(`Could not read ${file.name}: ${e instanceof Error ? e.message : "unknown error"}`);
+    } finally {
+      setReadingAsset(false);
+      if (assetFileRef.current) assetFileRef.current.value = "";
+    }
+  }
+
   return (
     <div className="compose">
       {/* The hero spans the full width on its own row; below it the form and the
@@ -1156,13 +1216,34 @@ function Compose({
 
         <div className="field">
           <label htmlFor="asset-text">Promotional asset text</label>
+          <div className="row" style={{ marginBottom: 8, gap: 12 }}>
+            <input
+              ref={assetFileRef}
+              type="file"
+              accept=".pdf,.txt,.md,.markdown"
+              onChange={(e) => void onAssetFile(e.target.files)}
+              disabled={disabled || readingAsset}
+              aria-label="Load the asset from a PDF or text file"
+            />
+            {readingAsset && <span className="hint">Reading…</span>}
+            {assetSource && !readingAsset && <span className="hint">from {assetSource}</span>}
+          </div>
+          {fileError && (
+            <p className="err" style={{ marginBottom: 8 }}>
+              <span aria-hidden="true">▲</span> {fileError}
+            </p>
+          )}
           <textarea
             id="asset-text"
             value={assetText}
-            onChange={(e) => setAssetText(e.target.value)}
-            placeholder="Paste the promotional copy to review…"
+            onChange={(e) => {
+              setAssetText(e.target.value);
+              if (assetSource) setAssetSource(null); // edited by hand now
+            }}
+            placeholder="Paste the promotional copy to review, or load a PDF above…"
             spellCheck={false}
           />
+          <AssetSizeNote text={assetText} />
         </div>
 
         <div className="compose-actions">
@@ -1394,6 +1475,44 @@ function Verdict({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Size of the loaded asset, and an honest warning when it is big.
+ *
+ * A review fans out one search and one entailment call per extracted claim, and
+ * the API route is capped at 300 seconds. On the eval corpus, assets of 1-2k
+ * characters produced 5-9 claims and ran in 25-40 seconds. Long documents are
+ * exactly what MLR reviewers deal with and exactly what this pipeline is worst
+ * at, so the reviewer is told before they spend the credits rather than after a
+ * timeout eats them.
+ *
+ * Nothing is truncated. Silently reviewing the first N characters of a
+ * submission and reporting it as a review of the whole would be far worse than
+ * a slow run.
+ */
+function AssetSizeNote({ text }: { text: string }) {
+  const chars = text.length;
+  if (chars < 6000) return null;
+  // ~1,800 characters per page of dense promotional copy, from the corpus assets.
+  // No claim-count estimate: claims per character varies several-fold between a
+  // bulleted sales aid and running prose, and a confident wrong number is worse
+  // than none.
+  const pages = Math.max(1, Math.round(chars / 1800));
+  const heavy = chars > 20000;
+  return (
+    <p className="hint" style={{ marginTop: 6 }}>
+      {chars.toLocaleString()} characters, roughly {pages} page{pages === 1 ? "" : "s"}.
+      {heavy && (
+        <>
+          {" "}
+          <strong>This may run long or time out.</strong> Every claim gets its own retrieval and
+          entailment pass, and the request is capped at five minutes. Reviewing a section at a time
+          is more reliable, and nothing here is truncated: what you load is what gets reviewed.
+        </>
+      )}
+    </p>
   );
 }
 
