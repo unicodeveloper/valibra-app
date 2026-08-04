@@ -1,0 +1,37 @@
+{
+  "id": "defective-opdp-amvuttra-with-references",
+  "kind": "defective",
+  "name": "Amvuttra webpage, WITH the sponsor's own reference pack",
+  "provenance": "Claims quoted VERBATIM by FDA OPDP in its 04/23/2026 Untitled Letter to Alnylam (NDA 215515, MA 352) re: the ATTR-CM webpage AMV-USA-01405. FDA determined the webpage misbrands Amvuttra. Expected findings are FDA's determination. VERBATIM CHECK 2026-08-04: '3\u00bd' restored to FDA's rendering. FDA presents the headline claims and their accompanying graphic figures as separate quoted items; they are joined into running sentences here to reconstruct the webpage as a reviewer would paste it. Wording is otherwise word-for-word. REFERENCE-PACK VARIANT: identical asset, run with a data-on-file memo supplied as a reference pack. The memo states the same figures the webpage does AND records the limitation FDA relied on (open-label extension, no concurrent placebo after month 36, not prespecified, descriptive only). Expectations are deliberately unchanged from the no-pack asset: supplying the sponsor's own documents must not turn claims FDA called violative into supported ones. If this asset ever passes while the plain one fails, or vice versa, the pack is changing verdicts it should not.",
+  "fdaFinding": "Creates a misleading impression of a definitive, quantified mortality benefit. The claims rest on a secondary endpoint of all-cause mortality at 3.5 years drawn from the OPEN-LABEL extension of HELIOS-B: no true placebo comparator remained at that timepoint (all placebo patients were unblinded and switched to Amvuttra), introducing bias and confounding with no concurrent control. The extension was inadequately designed to support conclusory mortality representations, and the on-page disclaimer does not cure it.",
+  "assetText": "AMVUTTRA (vutrisiran) injection\n\nProven to help people with ATTR-CM live longer\n\nPeople lived longer with continued treatment\n\nAnalyses done over 3\u00bd years compared the original AMVUTTRA (vutrisiran) and placebo groups from the beginning of the study. After 3 years, people taking placebo switched to AMVUTTRA so that everyone still in the study received AMVUTTRA for up to an additional 6 months.\n\nThe risk of death was lower over 3\u00bd years with AMVUTTRA. 36% Lower Risk compared to placebo.\n\nSurvival was estimated in a separate analysis at 3\u00bd years. 80% Survival Rate for people taking AMVUTTRA at 3\u00bd years compared to 72% for people taking placebo.\n\nMost deaths were heart-related.\n\nIn a group in the study of people not taking a stabilizer at the start of the study: The risk of death was lower over 3\u00bd years with AMVUTTRA. 35% Lower Risk compared to placebo. Survival was estimated in a separate analysis at 3\u00bd years. 76% Survival Rate for people taking AMVUTTRA at 3\u00bd years compared to 67% for people taking placebo.",
+  "expect": {
+    "maxCritical": null,
+    "categories": [],
+    "flaggedClaims": [
+      "36% Lower Risk"
+    ],
+    "totality": {
+      "claims": [
+        "Proven to help people with ATTR-CM live longer",
+        "People lived longer with continued treatment",
+        "The risk of death was lower",
+        "Survival was estimated in a separate analysis",
+        "80% Survival Rate"
+      ],
+      "minFlagged": 3,
+      "why": "FDA: 'The totality of the claims and presentations above creates a misleading impression that treatment with Amvuttra has shown a definitive and quantified benefit, with specific established levels of efficacy, on mortality over 3.5 years, when this is not the case.' The finding is about the set, so the corpus asserts that most of the set draws a flag rather than that any one sentence does."
+    }
+  },
+  "referencePack": {
+    "name": "eval-amvuttra-dof",
+    "drugName": "vutrisiran",
+    "documents": [
+      {
+        "filename": "DOF-VUT-2026-014.txt",
+        "mime": "text/plain",
+        "text": "DATA ON FILE: DOF-VUT-2026-014, Alnylam Pharmaceuticals\n\nHELIOS-B open-label extension: mortality analysis at 42 months.\n\nAt the 3.5-year timepoint, the all-cause mortality analysis of the overall population showed a 36% lower risk of death for patients randomised to vutrisiran compared with the placebo group (hazard ratio 0.64). Estimated survival at 3.5 years was 80% in the vutrisiran arm and 72% in the placebo arm. In the monotherapy population the corresponding figures were a 35% lower risk of death, with estimated survival of 76% versus 67%.\n\nLIMITATION OF THIS ANALYSIS: after month 36 all placebo patients were unblinded and crossed over to vutrisiran, so no concurrent placebo comparator exists beyond that point. This analysis was not prespecified, was not controlled for multiplicity, and is descriptive only. It must not be presented as establishing a definitive or quantified survival benefit."
+      }
+    ]
+  }
+}

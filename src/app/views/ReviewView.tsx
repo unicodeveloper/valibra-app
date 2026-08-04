@@ -71,6 +71,10 @@ export function ReviewView({
   const [assetName, setAssetName] = useState("Ozempic");
   const [assetText, setAssetText] = useState(SAMPLE_ASSET);
   const [markets, setMarkets] = useState<Market[]>(["US"]);
+  /** The reviewer's own reference pack, if they have one selected. Feeds claim
+   *  substantiation only; label, FAERS and patent checks stay on live retrieval. */
+  const [referencePackId, setReferencePackId] = useState<string | null>(null);
+  const [packs, setPacks] = useState<{ id: string; name: string; chunkCount: number; kind?: string }[]>([]);
 
   const router = useRouter();
 
@@ -202,6 +206,24 @@ export function ReviewView({
     );
   }, [reopened]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/references");
+        if (!res.ok) return; // signed out or no DB: the picker simply stays hidden
+        const data = await res.json();
+        // Precedent packs never substantiate, so they are not offered here.
+        if (!cancelled) setPacks((data.packs ?? []).filter((p: { kind?: string }) => p.kind !== "precedent"));
+      } catch {
+        /* composing a review must not depend on this */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function toggleMarket(m: Market) {
     setMarkets((prev) => {
       const next = prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m];
@@ -248,7 +270,7 @@ export function ReviewView({
       const res = await fetch("/api/review", {
         method: "POST",
         headers,
-        body: JSON.stringify({ assetText, assetName, markets, force }),
+        body: JSON.stringify({ assetText, assetName, markets, force, referencePackId }),
         signal: ac.signal,
       });
 
@@ -616,6 +638,9 @@ export function ReviewView({
           setAssetText={setAssetText}
           markets={markets}
           toggleMarket={toggleMarket}
+          packs={packs}
+          referencePackId={referencePackId}
+          setReferencePackId={setReferencePackId}
           onRun={() => {
             // Clicking Run on the untouched sample would waste the one free run
             // reproducing the cached sample. Show the cached one (free, instant)
@@ -912,7 +937,8 @@ export function ReviewView({
                 onGenerateDossier={onGenerateDossier}
               />
 
-              {!unchecked && result.provenance.sourceCount > 0 && (
+              {!unchecked &&
+                (result.provenance.sourceCount > 0 || (result.provenance.referenceCount ?? 0) > 0) && (
                 <div className="trust">
                   <span className="tb">
                     <span aria-hidden="true">✓</span> Licensed evidence
@@ -921,6 +947,13 @@ export function ReviewView({
                     {result.provenance.sourceCount} sources across {result.provenance.datasets.length}{" "}
                     datasets · {result.provenance.markets.join(" / ")}
                   </span>
+                  {/* Counted apart from the licensed total on purpose: a pack must
+                      not be able to inflate the independent-grounding number. */}
+                  {(result.provenance.referenceCount ?? 0) > 0 && (
+                    <span className="ds ref" title="Passages from documents you supplied, not independently retrieved.">
+                      + {result.provenance.referenceCount} from your references
+                    </span>
+                  )}
                   {result.provenance.datasets.map((d) => (
                     <span className="ds" key={d}>
                       {datasetLabel(d)}
@@ -1056,6 +1089,9 @@ function Compose({
   setAssetText,
   markets,
   toggleMarket,
+  packs,
+  referencePackId,
+  setReferencePackId,
   onRun,
   onSeeSample,
   disabled,
@@ -1067,6 +1103,9 @@ function Compose({
   assetText: string;
   setAssetText: (s: string) => void;
   markets: Market[];
+  packs: { id: string; name: string; chunkCount: number; kind?: string }[];
+  referencePackId: string | null;
+  setReferencePackId: (id: string | null) => void;
   toggleMarket: (m: Market) => void;
   onRun: () => void;
   onSeeSample: () => void;
@@ -1158,6 +1197,31 @@ function Compose({
               ))}
             </span>
           </div>
+
+          {/* Only shown when the reviewer actually has packs. An empty picker
+              would advertise a feature and then explain why it is unavailable,
+              which is worse than saying nothing at all. */}
+          {packs.length > 0 && (
+            <div className="row">
+              <span className="lbl" style={{ margin: 0 }} id="ref-lbl">
+                References
+              </span>
+              <select
+                aria-labelledby="ref-lbl"
+                value={referencePackId ?? ""}
+                onChange={(e) => setReferencePackId(e.target.value || null)}
+                disabled={disabled}
+              >
+                <option value="">None (licensed sources only)</option>
+                {packs.map((p) => (
+                  <option key={p.id} value={p.id} disabled={p.chunkCount === 0}>
+                    {p.name}
+                    {p.chunkCount === 0 ? " (not indexed)" : ` (${p.chunkCount} passages)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {error && (

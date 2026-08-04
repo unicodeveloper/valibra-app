@@ -20,5 +20,5 @@ export async function GET(req: Request) {
       const message = err instanceof Error ? err.message : "Failed to list library.";
       return NextResponse.json({ error: message }, { status: 500 });
     }
-  });
+  }, "your claims library");
 }

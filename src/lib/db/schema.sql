@@ -221,3 +221,63 @@ ALTER TABLE dr_tasks ADD COLUMN IF NOT EXISTS pdf_url TEXT;
 -- DROPs (`DROP TABLE IF EXISTS` / `DROP COLUMN IF EXISTS`) are idempotent on
 -- their own — but they delete data, so add them only when you truly mean it.
 -- ============================================================================
+
+-- ============================================================================
+-- Reference packs (F-ref) — the reviewer's own approved source documents.
+--
+-- Named "reference pack", not "dossier": in this app a dossier is already the
+-- DeepResearch-generated report about a drug. This is the opposite direction —
+-- documents the reviewer supplies, which the asset's claims are actually cited
+-- to. Approved PI, pivotal manuscripts, data-on-file memos, prior approved copy.
+--
+-- Why this exists: retrieval reaches licensed datasets, and roughly 0.13 claims
+-- per run still come back with no source at all, concentrated on newer
+-- specialised products where MLR review matters most. When the reviewer holds
+-- the reference, "no source found" should become "supported by your reference".
+--
+-- Chunks carry their own embedding, matched in-app with cosine similarity, the
+-- same approach claims_library already uses. A pack is tens to hundreds of
+-- chunks, so this stays well inside what a scan can serve; if packs ever grow
+-- into the thousands this is the thing to move to pgvector.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS reference_packs (
+  id          UUID PRIMARY KEY,
+  owner       TEXT,                    -- NULL in self-hosted (global), user id in valyu mode
+  name        TEXT NOT NULL,
+  drug_name   TEXT,                    -- optional: scopes the pack to one product
+  -- 'reference' = the reviewer's approved sources; feeds claim substantiation.
+  -- 'precedent' = enforcement letters, rulings, guidance; NEVER feeds
+  -- substantiation. A letter quotes the claim it objects to, which makes it the
+  -- best semantic match for that claim, and in the substantiation lane it would
+  -- read as evidence for the copy it condemns.
+  kind        TEXT NOT NULL DEFAULT 'reference',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE reference_packs ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'reference';
+
+CREATE INDEX IF NOT EXISTS reference_packs_owner_idx ON reference_packs (owner);
+
+CREATE TABLE IF NOT EXISTS reference_docs (
+  id          UUID PRIMARY KEY,
+  pack_id     UUID NOT NULL REFERENCES reference_packs (id) ON DELETE CASCADE,
+  filename    TEXT NOT NULL,
+  mime        TEXT,
+  char_count  INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS reference_docs_pack_idx ON reference_docs (pack_id);
+
+CREATE TABLE IF NOT EXISTS reference_chunks (
+  id          UUID PRIMARY KEY,
+  doc_id      UUID NOT NULL REFERENCES reference_docs (id) ON DELETE CASCADE,
+  pack_id     UUID NOT NULL REFERENCES reference_packs (id) ON DELETE CASCADE,
+  ordinal     INTEGER NOT NULL,        -- position in the document, for citing "part 3 of 11"
+  text        TEXT NOT NULL,
+  embedding   JSONB,                   -- OpenAI embedding vector; NULL if embedding failed
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS reference_chunks_pack_idx ON reference_chunks (pack_id);

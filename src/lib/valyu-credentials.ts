@@ -295,11 +295,15 @@ export async function currentIdentity(): Promise<ValyuIdentity | null> {
 export async function withPersistenceScope(
   req: Request,
   handler: () => Promise<Response>,
+  /** What the caller is guarding, for the sign-in message. Persisted data is
+   *  owner-scoped, so more than one kind of thing sits behind this gate and
+   *  "see your reviews" is wrong for most of them. */
+  subject = "your saved work",
 ): Promise<Response> {
   const token = bearerToken(req);
   if (!token && !isSelfHostedMode()) {
     return Response.json(
-      { error: "Sign in to see your reviews.", requiresReauth: true },
+      { error: `Sign in to see ${subject}.`, requiresReauth: true },
       { status: 401 },
     );
   }

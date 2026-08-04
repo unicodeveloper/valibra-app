@@ -74,7 +74,9 @@ export async function findRecentByHash(
 }
 
 let _sql: ReturnType<typeof postgres> | null = null;
-function sql() {
+/** Exported so other modules (reference packs) share this pool and its TLS
+ *  handling rather than opening a second connection with different rules. */
+export function sql() {
   if (_sql) return _sql;
   const url = process.env.DATABASE_URL;
   if (!url) return null;

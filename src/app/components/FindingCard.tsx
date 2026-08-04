@@ -8,6 +8,7 @@ import {
   SEV_GLYPH,
   SEV_WORD,
   datasetLabel,
+  isReferenceSource,
   readableSnippet,
   yearOf,
   type Decision,
@@ -177,7 +178,21 @@ export function FindingCard({
                 return (
                   <div className="ev" key={`${e.url}-${i}`}>
                     <div className="ev-top">
-                      <span className="ds">{datasetLabel(e.source)}</span>
+                      <span
+                        className={`ds${isReferenceSource(e.source) ? " ref" : ""}`}
+                        title={
+                          isReferenceSource(e.source)
+                            ? "A document you supplied, not independently retrieved literature."
+                            : undefined
+                        }
+                      >
+                        {datasetLabel(e.source)}
+                      </span>
+                      {e.relevance != null && (
+                        <span className="yr" title="Semantic similarity to the claim">
+                          {Math.round(e.relevance * 100)}% match
+                        </span>
+                      )}
                       {yr && <span className="yr">{yr}</span>}
                       {e.citationCount != null && e.citationCount > 0 && (
                         <span className="yr">· {e.citationCount.toLocaleString()} citations</span>
