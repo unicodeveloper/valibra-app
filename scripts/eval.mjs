@@ -74,12 +74,36 @@ async function clearMeter() {
   }
 }
 
-async function review(assetText, assetName) {
+/**
+ * Create a reference pack for an asset that ships with one, returning its id.
+ *
+ * The point of testing packs is not that they help. It is that they must not
+ * whitewash: supplying the sponsor's own documents must never turn a claim FDA
+ * called violative into a supported one. An asset with a pack therefore keeps
+ * exactly the same expectations as without it.
+ */
+async function createPack(pack) {
+  const res = await fetch(`${BASE}/api/references`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(pack),
+  });
+  if (!res.ok) throw new Error(`pack setup failed: HTTP ${res.status}`);
+  return (await res.json()).packId;
+}
+
+async function deletePack(id) {
+  await fetch(`${BASE}/api/references?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(
+    () => {},
+  );
+}
+
+async function review(assetText, assetName, referencePackId = null) {
   await clearMeter();
   const res = await fetch(`${BASE}/api/review`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ assetText, assetName, markets: ["US"], force: true }),
+    body: JSON.stringify({ assetText, assetName, markets: ["US"], force: true, referencePackId }),
   });
   if (!res.ok) {
     let detail = "";
@@ -177,11 +201,22 @@ const fmt = (x, d = 1) => (x == null ? "—" : Number(x).toFixed(d));
 async function evaluateAsset(asset) {
   const runs = [];
   const failures = [];
+
+  // Assets can ship a reference pack. It is created before the runs and removed
+  // afterwards, so the corpus stays self-contained and repeatable.
+  let packId = null;
+  if (asset.referencePack) {
+    try {
+      packId = await createPack(asset.referencePack);
+    } catch (err) {
+      failures.push(err instanceof Error ? err.message : String(err));
+    }
+  }
   for (let i = 0; i < RUNS; i++) {
     let done = false;
     for (let attempt = 0; attempt <= RETRIES && !done; attempt++) {
       try {
-        runs.push(await review(asset.assetText, asset.name));
+        runs.push(await review(asset.assetText, asset.name, packId));
         done = true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -191,6 +226,8 @@ async function evaluateAsset(asset) {
     }
     process.stdout.write(done ? "." : "x");
   }
+
+  if (packId) await deletePack(packId);
 
   if (runs.length === 0) {
     return { id: asset.id, kind: asset.kind, name: asset.name, runs: 0, failures, ok: false };
@@ -234,6 +271,13 @@ async function evaluateAsset(asset) {
     warningsMean: mean(runs.map((r) => countSev(r, "warning"))),
     unverifiedMean: mean(runs.map((r) => countSev(r, "unverified"))),
     zeroSourceMean: mean(runs.map(zeroSourceClaims)),
+    referencePassages: mean(
+      runs.map(
+        (r) =>
+          Object.values(r.substantiation).flatMap((x) => x.evidence)
+            .filter((e) => (e.source ?? "").startsWith("reference:")).length,
+      ),
+    ),
     verdictAgreement: verdictAgreement(runs),
     expectedCategories: expected,
     matchedCategories: hit,
@@ -335,9 +379,12 @@ if (hardFailures) {
 const payload = { summary, results };
 const stamp = summary.timestamp.replace(/[:.]/g, "-");
 writeFileSync(join(RESULTS, `${stamp}.json`), JSON.stringify(payload, null, 2));
-writeFileSync(join(RESULTS, "latest.json"), JSON.stringify(payload, null, 2));
+// A filtered run measured a subset, so it is not the scoreboard. Letting `--only`
+// overwrite latest.json would silently replace a full corpus result with two
+// assets and make the committed scoreboard a lie.
+if (!ONLY) writeFileSync(join(RESULTS, "latest.json"), JSON.stringify(payload, null, 2));
 await meterSql?.end({ timeout: 5 }).catch(() => {});
-console.log(`\n[eval] wrote eval/results/${stamp}.json and latest.json`);
+console.log(`\n[eval] wrote eval/results/${stamp}.json${ONLY ? " (filtered run: latest.json left alone)" : " and latest.json"}`);
 
 // Non-zero exit when the corpus doesn't pass, so this can gate a change.
 process.exit(summary.passed === summary.total ? 0 : 1);

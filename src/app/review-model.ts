@@ -186,8 +186,17 @@ export function isUnchecked(r: ReviewResult): boolean {
 
 /** A short, human name for a Valyu dataset id. */
 export function datasetLabel(id: string): string {
+  // A reviewer-supplied document is not a dataset. Naming it as one would let
+  // "your own file says this" pass for "the primary literature says this",
+  // which is the assurance this whole tool exists to provide.
+  if (id.startsWith("reference:")) return `your reference · ${id.slice("reference:".length)}`;
   const tail = id.split("/").pop() ?? id;
   return tail.replace(/^valyu-/, "").replace(/-/g, " ");
+}
+
+/** True when this passage came from the reviewer's own uploaded documents. */
+export function isReferenceSource(id: string): boolean {
+  return id.startsWith("reference:");
 }
 
 /**

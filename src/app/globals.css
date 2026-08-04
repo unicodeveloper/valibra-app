@@ -2332,11 +2332,14 @@ code {
 .annot-status.dirty {
   color: var(--ink-3);
 }
-.annot .xs {
+/* Text buttons. These used to be scoped to .annot, so the same markup elsewhere
+   fell back to the filled default and a "delete" ended up as the loudest thing
+   on its row. Generalised, with .annot kept for the tighter inline sizing. */
+.xs {
   font-size: 11.5px;
   padding: 3px 8px;
 }
-.annot .link {
+.link {
   background: none;
   border: none;
   color: var(--accent);
@@ -2344,6 +2347,16 @@ code {
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;
+}
+/* Destructive text buttons read in the critical colour on approach, so the
+   consequence is visible before the click rather than only in the confirm. */
+.link.danger,
+.link[data-danger="true"] {
+  color: var(--ink-3);
+}
+.link.danger:hover,
+.link[data-danger="true"]:hover {
+  color: var(--crit);
 }
 
 /* ------------------------------------------------------------ states -- */
@@ -3718,4 +3731,13 @@ a.btn-link.sm {
   .drawer-tools {
     display: none !important;
   }
+}
+
+/* Reviewer-supplied reference passages. Outlined rather than filled, so a
+   document the sponsor uploaded never reads at a glance like a licensed source
+   the retrieval layer returned. */
+.ds.ref {
+  background: transparent;
+  border: 1px dashed var(--unv);
+  color: var(--unv);
 }

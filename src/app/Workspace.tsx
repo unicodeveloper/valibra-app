@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ReviewView } from "./views/ReviewView";
 import { DossierView } from "./views/DossierView";
 import { LibraryView } from "./views/LibraryView";
+import { ReferencesView } from "./views/ReferencesView";
 import { ResearchView } from "./views/ResearchView";
 import { HistoryView } from "./views/HistoryView";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -18,7 +19,7 @@ import { DR_LABELS, DR_SOURCE, isDone, type DrKind, type DrTask } from "./dr";
 import type { ReviewResult } from "@/lib/schemas";
 import type { Decision } from "./review-model";
 
-export type View = "review" | "history" | "library" | "dossier" | "research";
+export type View = "review" | "history" | "library" | "references" | "dossier" | "research";
 
 /** Kept in step with the `title` in app/layout.tsx — the badge below rewrites
  *  document.title, so it needs the unbadged string to restore. */
@@ -37,6 +38,7 @@ const PATH_BY_VIEW: Record<View, string> = {
   review: "/",
   history: "/history",
   library: "/library",
+  references: "/references",
   dossier: "/dossier",
   research: "/research",
 };
@@ -44,6 +46,7 @@ const PATH_BY_VIEW: Record<View, string> = {
 const VIEW_BY_PATH: Record<string, View> = {
   "/history": "history",
   "/library": "library",
+  "/references": "references",
   "/dossier": "dossier",
   "/research": "research",
 };
@@ -52,6 +55,7 @@ const TABS: { id: View; label: string }[] = [
   { id: "review", label: "Review" },
   { id: "history", label: "History" },
   { id: "library", label: "Library" },
+  { id: "references", label: "References" },
   { id: "dossier", label: "Dossier" },
   { id: "research", label: "Research" },
 ];
@@ -563,6 +567,11 @@ export function Workspace({
         {view === "library" && (
           <SignInGate title="Sign in to see your claims library">
             <LibraryView />
+          </SignInGate>
+        )}
+        {view === "references" && (
+          <SignInGate title="Sign in to use reference packs">
+            <ReferencesView />
           </SignInGate>
         )}
         {view === "dossier" && (

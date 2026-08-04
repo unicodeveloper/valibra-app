@@ -57,6 +57,25 @@ found, so those assets use `expect.totality` instead:
 At least `minFlagged` of the set must draw a flag in every run. A corpus that
 overstates its own authority is no better than one that invents it.
 
+## Reference packs
+
+An asset may ship a `referencePack`, created before its runs and deleted after,
+so the corpus stays self-contained:
+
+```jsonc
+"referencePack": {
+  "name": "eval-amvuttra-dof",
+  "drugName": "vutrisiran",
+  "documents": [{ "filename": "DOF-…txt", "mime": "text/plain", "text": "…" }]
+}
+```
+
+The point is not that packs help. It is that they must not whitewash. The
+pack variant of an asset carries **exactly the same expectations** as the plain
+one: supplying the sponsor's own documents must never turn a claim FDA called
+violative into a supported one. If the two variants ever disagree, the pack is
+changing verdicts it has no business changing.
+
 ## Running
 
 Requires the dev server (`npm run dev`) and a local `DATABASE_URL`. The harness

@@ -36,3 +36,6 @@ npm-debug.log*
 # eval: keep the current scoreboard, not every timestamped run
 eval/results/*.json
 !eval/results/latest.json
+
+# generated on every build from the installed pdfjs-dist
+public/pdf.worker.min.mjs

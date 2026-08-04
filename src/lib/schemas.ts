@@ -84,6 +84,10 @@ export const EvidenceSchema = z.object({
   snippet: z.string(),
   publicationDate: z.string().nullable(),
   citationCount: z.number().nullable(),
+  /** Cosine score, set only on reference-pack matches so the reviewer can see
+   *  how close the passage actually was. Absent for retrieved sources, which
+   *  are ranked by the search API rather than scored here. */
+  relevance: z.number().optional(),
 });
 export type Evidence = z.infer<typeof EvidenceSchema>;
 
@@ -293,6 +297,9 @@ export type FindingCategory =
 export interface Provenance {
   datasets: string[];
   sourceCount: number;
+  /** Passages from the reviewer's own reference pack, counted apart from
+   *  licensed sources so the badge never overstates independent grounding. */
+  referenceCount?: number;
   markets: string[];
   note: string;
 }

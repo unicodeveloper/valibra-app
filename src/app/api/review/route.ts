@@ -46,6 +46,9 @@ const RequestSchema = z.object({
   markets: z.array(z.enum(["US", "UK/EU", "EU", "UK"])).default(["US"]),
   // Set by the client's "Re-run anyway" action to bypass the duplicate warning.
   force: z.boolean().default(false),
+  // Optional: the reviewer's own approved source documents. Feeds claim
+  // substantiation only; label, FAERS, interaction and patent checks stay live.
+  referencePackId: z.string().uuid().nullable().default(null),
 });
 
 /** Best-effort persistence — a DB outage must never fail a review. `owner` and
@@ -74,7 +77,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { assetText, assetName, markets, force } = parsed.data;
+  const { assetText, assetName, markets, force, referencePackId } = parsed.data;
 
   // Who pays for this review's ~15 Valyu searches. Captured here and threaded
   // explicitly into the run below, rather than relying on an ambient scope, so
@@ -158,11 +161,13 @@ export async function POST(req: Request) {
   // Clients that ask for a stream get the audit trail live as the pipeline
   // walks it; everyone else gets the same single JSON payload as before.
   if (req.headers.get("accept")?.includes("text/event-stream")) {
-    return streamReview(assetText, assetName, markets, token, owner, hash, anon);
+    return streamReview(assetText, assetName, markets, token, owner, hash, anon, referencePackId);
   }
 
   try {
-    const result = await runScoped(token, () => runReview(assetText, assetName, markets, owner));
+    const result = await runScoped(token, () =>
+      runReview(assetText, assetName, markets, owner, undefined, referencePackId),
+    );
     // Anon runs are ephemeral — the metering row was already reserved up front.
     if (!anon) persist(result, owner, hash);
     return NextResponse.json(result);
@@ -185,6 +190,7 @@ function streamReview(
   owner: Owner,
   hash: string,
   anon: Anon,
+  referencePackId: string | null,
 ) {
   const encoder = new TextEncoder();
 
@@ -205,8 +211,13 @@ function streamReview(
         // route handler returned, so any ambient scope is already gone. `owner`
         // was already resolved before streaming began and is passed straight in.
         const result = await runScoped(token, () =>
-          runReview(assetText, assetName, markets, owner, (entry: AuditEntry) =>
-            send("stage", entry),
+          runReview(
+            assetText,
+            assetName,
+            markets,
+            owner,
+            (entry: AuditEntry) => send("stage", entry),
+            referencePackId,
           ),
         );
         // Anon runs are ephemeral — the metering row was already reserved up front.

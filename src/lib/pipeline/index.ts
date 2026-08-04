@@ -22,6 +22,7 @@ import { checkComparative } from "./comparative";
 import { checkIp, noveltyClaims } from "./ipCheck";
 import { checkMarketClaims, marketClaims } from "./marketClaim";
 import { listLibrary, type LibraryEntry, type Owner } from "../db/client";
+import { searchPack } from "../references";
 import { embed, cosineSim } from "../llm";
 import type { Claim } from "../schemas";
 
@@ -135,6 +136,15 @@ export async function runReview(
   // "similar claim already substantiated" badge never sources another tenant.
   owner: Owner = null,
   onProgress?: (entry: AuditEntry) => void,
+  /**
+   * The reviewer's own approved source documents, if they supplied a pack.
+   *
+   * Scoped deliberately narrowly: this feeds CLAIM SUBSTANTIATION only. Label,
+   * FAERS, interaction and patent checks stay on live retrieval whatever is in
+   * the pack, because someone uploading last year's PI must not be able to move
+   * what the off-label detector believes the approved indication is.
+   */
+  referencePackId: string | null = null,
 ): Promise<ReviewResult> {
   const reviewId = randomUUID();
   const audit: AuditEntry[] = [];
@@ -148,6 +158,7 @@ export async function runReview(
   };
 
   log("ingest", `Asset "${assetName}" received (${assetText.length} chars).`);
+  if (referencePackId) log("references", "Reviewer reference pack supplied; claims check against it first.");
 
   // Clear the retrieval circuit breaker so a previous run's credit failure can't
   // short-circuit this one.
@@ -234,6 +245,16 @@ export async function runReview(
 
   const claimTasks = Promise.all(
     inlineClaims.map(async (claim) => {
+      // The reviewer's own references first: the asset was written from them, so
+      // they are the substantiation an MLR reviewer would actually check against.
+      // Retrieval then adds the independent view.
+      const packEvidence = referencePackId
+        ? await searchPack(referencePackId, claim.text).catch((e) => {
+            console.error("reference pack search failed:", e);
+            return [];
+          })
+        : [];
+
       const { evidence, error } = await valyu.substantiate(
         claim.searchQuery || claim.text,
         claim.type,
@@ -256,11 +277,14 @@ export async function runReview(
         };
         return;
       }
-      // Captured BEFORE label excerpts are appended: this records what the
-      // search itself found, which is what the reviewer needs to know.
+      // Captured BEFORE label excerpts and pack hits are added: this records what
+      // the SEARCH found, which is what the reviewer needs to know. A pack hit
+      // does not mean retrieval succeeded.
       const noSourcesRetrieved = evidence.length === 0;
-      const evidenceForVerify =
-        onLabelTypes.has(claim.type) && label.length ? [...evidence, ...label] : evidence;
+      const evidenceForVerify = [
+        ...packEvidence,
+        ...(onLabelTypes.has(claim.type) && label.length ? [...evidence, ...label] : evidence),
+      ];
       const verification = await verifyClaim(claim, evidenceForVerify);
       substantiation[claim.id] = {
         evidence: evidenceForVerify,
@@ -342,17 +366,36 @@ export async function runReview(
   }
 
   // F26 — provenance / licensed-evidence trust badge.
+  //
+  // Reviewer-supplied passages are counted SEPARATELY from licensed sources.
+  // Folding them into one number would let a pack inflate the badge and overstate
+  // how much independent grounding a review actually had, which is the opposite
+  // of what this badge is for.
   const datasets = new Set<string>();
-  for (const s of Object.values(substantiation)) for (const e of s.evidence) if (e.source) datasets.add(e.source);
   let sourceCount = 0;
-  for (const s of Object.values(substantiation)) sourceCount += s.evidence.length;
+  let referenceCount = 0;
+  for (const s of Object.values(substantiation)) {
+    for (const e of s.evidence) {
+      if (e.source?.startsWith("reference:")) {
+        referenceCount++;
+        continue;
+      }
+      if (e.source) datasets.add(e.source);
+      sourceCount++;
+    }
+  }
   const provenance: ReviewResult["provenance"] = {
     datasets: [...datasets].sort(),
     sourceCount,
+    referenceCount,
     markets,
     note: "Grounded in licensed / authoritative sources via Valyu (SOC 2 · ISO 27001 · GDPR · zero data retention).",
   };
-  log("provenance", `${datasets.size} dataset(s), ${sourceCount} source(s) cited.`);
+  log(
+    "provenance",
+    `${datasets.size} dataset(s), ${sourceCount} licensed source(s)` +
+      (referenceCount ? `, ${referenceCount} passage(s) from your references.` : "."),
+  );
   if (deepResearchRequired.length)
     log("deep-research", `${deepResearchRequired.length} check(s) require the DeepResearch lane.`);
 
