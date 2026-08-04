@@ -1,4 +1,4 @@
-# Valibra - Open MLR Review
+# OpenMLR
 
 An open-source, self-hostable **MLR (Medical-Legal-Regulatory) pre-check** for pharma promotional
 content. It verifies every claim against real, licensed primary sources, not a private library and shows its
@@ -146,13 +146,13 @@ See [`eval/README.md`](eval/README.md) for the corpus format and metric definiti
 
 ## How this compares
 
-The MLR category competes on workflow — routing, approvals, version control. Valibra doesn't
+The MLR category competes on workflow — routing, approvals, version control. OpenMLR doesn't
 fight there. It competes on **evidence**: every check below runs against a licensed primary source,
 not a private claims library you have to build and keep current.
 
 **●** core capability · **◐** partial or implied · **○** not advertised
 
-| Capability | Valibra | Veeva | Revisto | ERMA | Papercurve |
+| Capability | OpenMLR | Veeva | Revisto | ERMA | Papercurve |
 |---|:--:|:--:|:--:|:--:|:--:|
 | **Substantiation** |
 | Claim extraction & typing | ● | ● | ● | ● | ◐ |
@@ -243,7 +243,7 @@ Changing anything in the pipeline? Run `npm run eval` before and after — see
 
 ### Modes: who pays for Valyu
 
-Valibra runs in one of two modes, set by `NEXT_PUBLIC_APP_MODE`:
+OpenMLR runs in one of two modes, set by `NEXT_PUBLIC_APP_MODE`:
 
 | Mode | Sign-in | Who pays for retrieval | Configure |
 | --- | --- | --- | --- |
@@ -265,7 +265,7 @@ behaviourally identical.
 
 ```bash
 docker compose up -d         # Postgres on :5432
-export DATABASE_URL=postgres://valibra:valibra@localhost:5432/valibra
+export DATABASE_URL=postgres://openmlr:openmlr@localhost:5432/openmlr
 npm run db:init              # create tables
 ```
 
