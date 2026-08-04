@@ -148,81 +148,22 @@ See [`eval/README.md`](eval/README.md) for the corpus format and metric definiti
 > or reviewed by a regulatory professional is what would make the specificity number credible to
 > one — contributions very welcome.
 
-## How this compares
+## Where this fits
 
-The MLR category competes on workflow — routing, approvals, version control. OpenMLR doesn't
-fight there. It competes on **evidence**: every check below runs against a licensed primary source,
-not a private claims library you have to build and keep current.
+The MLR category competes on workflow — routing, approvals, version control, e-signatures,
+21 CFR Part 11 records, CMS integration. OpenMLR doesn't compete there and isn't a
+replacement for any of it. It's an evidence layer that runs before, or alongside, the
+system of record.
 
-**●** core capability · **◐** partial or implied · **○** not advertised
+The bet is on a different question. Tools that link claims to references check a claim
+against **your approved library**. This checks whether the underlying source document
+actually says what the claim says — entailment against the primary literature, with the
+passage and the citation shown next to the finding so a reviewer can disagree with it.
 
-| Capability | OpenMLR | Veeva | Revisto | ERMA | Papercurve |
-|---|:--:|:--:|:--:|:--:|:--:|
-| **Substantiation** |
-| Claim extraction & typing | ● | ● | ● | ● | ◐ |
-| Multi-source substantiation | ● | ◐ | ◐ | ◐ | ◐ |
-| Reference verification against a primary source † | ● | ◐ | ◐ | ◐ | ◐ |
-| **Citation currency & quality gate** | ● | ○ | ○ | ○ | ○ |
-| **Label & safety** |
-| Fair-balance / ISI vs live label | ● | ◐ | ● | ◐ | ◐ |
-| On-/off-label detector | ● | ◐ | ◐ | ◐ | ○ |
-| **Adverse-event cross-check (FAERS)** | ● | ○ | ○ | ○ | ○ |
-| Boxed-warning & contraindication omission | ● | ○ | ◐ | ◐ | ○ |
-| **Drug-interaction checker** | ● | ○ | ○ | ○ | ○ |
-| **Regulatory & competitive** |
-| Enforcement-precedent grounding | ● | ◐ | ◐ | ● | ○ |
-| Multi-market review (US/UK/EU) | ● | ● | ◐ | ◐ | ○ |
-| Comparative / superiority checker | ● | ◐ | ◐ | ◐ | ○ |
-| **IP / first-in-class checker** | ● | ○ | ○ | ○ | ○ |
-| **Market-claim checker** | ● | ○ | ○ | ○ | ○ |
-| **Specialist claim lanes** |
-| **Burden-of-disease / epidemiology** | ● | ○ | ○ | ○ | ○ |
-| **Companion-Dx / biomarker** | ● | ○ | ○ | ○ | ○ |
-| **Mechanism-of-action depth** | ● | ○ | ○ | ○ | ○ |
-| **Workspace** |
-| Reviewer workspace | ● | ● | ● | ● | ● |
-| Passage-anchored annotation & export | ● | ● | ● | ● | ● |
-| Claims library | ● | ● | ● | ○ | ◐ |
-| **Licensed-evidence provenance** | ● | ○ | ○ | ○ | ○ |
-| **DeepResearch lane** |
-| **Evidence dossier** | ● | ○ | ○ | ○ | ○ |
-| **Surveillance-claim checker** | ● | ○ | ○ | ○ | ○ |
-| Medical-device MLR mode | ● | ◐ | ○ | ○ | ○ |
-| **HCP verification (NPI)** | ● | ○ | ○ | ○ | ○ |
-| **Indication-language normalization (ICD)** | ● | ○ | ○ | ○ | ○ |
-
-**† The flagship difference is the one row where everyone scores.** All four incumbents link claims
-to references — Veeva auto-suggests them and flags missing links, Revisto validates statements
-against approved claims and references, Papercurve's Paige confidence-rates suggested references,
-ERMA maps substantiation across sentences. Every one of those checks a claim against **your
-approved library**. None of them publicly claims to check whether the *underlying source document
-actually says what the claim says*. That gap — matching and linking vs. entailment against the
-primary literature — is the whole reason this project exists, and an independent 2026 survey of the
-category reaches the same conclusion.
-
-**13 of the 26 checks have no advertised equivalent anywhere in the category** (bold rows). They
-fall into three groups:
-
-- **Safety data nobody wires in.** Post-market adverse events (FAERS) and label interactions are
-  public, structured, and directly contradict "well-tolerated" copy. No competitor advertises them.
-- **Claim types outside the label.** Patent, market-share, epidemiology, biomarker, mechanism and
-  surveillance claims all ship in real promotional material and all draw scrutiny — but sit outside
-  what a label-and-library tool can check.
-- **Evidence you can audit.** A citation-quality gate, named datasets and source counts per review,
-  because every citation points at a document the retrieval layer actually returned.
-
-Where the category is strong — configurable workflows, e-signatures, 21 CFR Part 11 records,
-enterprise CMS integration — the incumbents are ahead, and this is not a replacement for them. It is
-the evidence layer that runs before, or alongside, the system of record.
-
-> **On this table.** Marks reflect what each vendor **publicly advertises** on their own site and in
-> trade coverage, last verified July 2026 against
-> [Veeva AI for PromoMats](https://www.veeva.com/products/veeva-ai-for-promomats/),
-> [Revisto](https://www.revisto.com/product), [ERMA](https://www.ermasystems.com/mlr-software) and
-> [Papercurve](https://www.papercurve.com/product-claims).
-> "Not advertised" is not proof a capability is absent — these are closed products and any of them
-> may ship something unannounced, under a different name, or on a roadmap. Veeva in particular ships
-> AI agents fast; this table will go stale. Corrections via PR are welcome.
+Whether that's worth having depends on how it performs on your copy, which is why
+[calibration](#calibration--measuring-false-positives-not-just-catches) is in this README
+and why `npm run eval` reports false positives alongside catches. Run it on assets you
+know the answers to before trusting it on ones you don't.
 
 ## Stack
 
