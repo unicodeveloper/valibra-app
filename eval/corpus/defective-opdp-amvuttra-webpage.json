@@ -9,8 +9,18 @@
     "maxCritical": null,
     "categories": [],
     "flaggedClaims": [
-      "Proven to help people with ATTR-CM live longer",
       "36% Lower Risk"
-    ]
+    ],
+    "totality": {
+      "claims": [
+        "Proven to help people with ATTR-CM live longer",
+        "People lived longer with continued treatment",
+        "The risk of death was lower",
+        "Survival was estimated in a separate analysis",
+        "80% Survival Rate"
+      ],
+      "minFlagged": 3,
+      "why": "FDA: 'The totality of the claims and presentations above creates a misleading impression that treatment with Amvuttra has shown a definitive and quantified benefit, with specific established levels of efficacy, on mortality over 3.5 years, when this is not the case.' The finding is about the set, so the corpus asserts that most of the set draws a flag rather than that any one sentence does."
+    }
   }
 }
